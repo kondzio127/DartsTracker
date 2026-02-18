@@ -1,6 +1,7 @@
 // src/store/gameStore.ts
 import { create } from 'zustand';
-import { Player, Match } from '../types/domain';
+import { Player, Match, Leg } from '../types/domain';
+import { X01LegState, createInitialLegState, applyVisit } from '../engine/x01';
 
 // Very simple ID generator for now.
 // Good enough for local/offline use.
@@ -15,6 +16,10 @@ interface GameState {
     // The match currently being played (if any)
     currentMatch?: Match;
 
+    // Current leg state for the active match
+    currentLegState?: X01LegState;
+    currentLegId?: string;
+
     // Actions (functions we can call from components)
     addPlayer: (name: string, nickname?: string) => Player;
     startMatch: (config: {
@@ -22,6 +27,9 @@ interface GameState {
         startScore: number;
         bestOfLegs?: number;
     }) => void;
+
+    addVisit: (dartScores: number[]) => void;
+    finishLegIfNeeded: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -29,6 +37,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     players: [],
     matches: [],
     currentMatch: undefined,
+    currentLegState: undefined,
+    currentLegId: undefined,
 
     // ----- actions -----
 
@@ -41,7 +51,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             createdAt: new Date().toISOString(),
         };
 
-        // 'set' lets us update the store based on previous state
+        // 'set' lets us update the store based on the previous state
         set(state => ({
             players: [...state.players, newPlayer],
         }));
@@ -53,23 +63,85 @@ export const useGameStore = create<GameState>((set, get) => ({
     startMatch: ({ playerIds, startScore, bestOfLegs }) => {
         const { matches } = get();
 
+        const matchId = uuid();
+        const legId = uuid();
+
         const newMatch: Match = {
-            id: uuid(),
+            id: matchId,
             mode: 'X01',
             startScore,
             bestOfLegs,
             createdAt: new Date().toISOString(),
             playerIds,
             legs: [],
-            // finishedAt is left undefined until the match ends
         };
+
+        const initialLegState = createInitialLegState(playerIds, startScore);
 
         set({
             matches: [...matches, newMatch],
             currentMatch: newMatch,
+            currentLegState: initialLegState,
+            currentLegId: legId,
+        });
+    },
+
+    addVisit: (dartScores: number[]) => {
+        const { currentLegState, currentMatch, currentLegId } = get();
+        if (!currentLegState || !currentMatch || !currentLegId) {
+            console.warn('No active leg/match to add a visit to.');
+            return;
+        }
+
+        const { legState: updatedLegState, visit } = applyVisit({
+            legState: currentLegState,
+            playerId: currentLegState.currentPlayerId,
+            dartScores,
         });
 
-        // For now, we’re not creating legs or legState yet.
-        // That comes in Phase 1 when we wire in the scoring engine.
+        // attach the real legId instead of the placeholder
+        const visitWithLegId = { ...visit, legId: currentLegId };
+
+        const newLegState: X01LegState = {
+            ...updatedLegState,
+            visits: [
+                ...updatedLegState.visits.slice(0, -1),
+                visitWithLegId,
+            ],
+        };
+
+        set({
+            currentLegState: newLegState,
+        });
+    },
+
+    finishLegIfNeeded: () => {
+        const { currentLegState, currentMatch, currentLegId, matches } = get();
+        if (!currentLegState || !currentMatch || !currentLegId) return;
+        if (!currentLegState.winnerPlayerId) return;
+
+        const leg: Leg = {
+            id: currentLegId,
+            matchId: currentMatch.id,
+            sequence: currentMatch.legs.length + 1,
+            startingPlayerId: currentLegState.playerOrder[0],
+            winnerPlayerId: currentLegState.winnerPlayerId,
+            visits: currentLegState.visits,
+        };
+
+        const updatedMatch: Match = {
+            ...currentMatch,
+            legs: [...currentMatch.legs, leg],
+            finishedAt: new Date().toISOString(),
+        };
+
+        const otherMatches = matches.filter(m => m.id !== currentMatch.id);
+
+        set({
+            matches: [...otherMatches, updatedMatch],
+            currentMatch: undefined,
+            currentLegState: undefined,
+            currentLegId: undefined,
+        });
     },
 }));

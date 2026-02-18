@@ -3,5 +3,6 @@
 export type RootStackParamList = {
     Home: undefined;
     NewMatch: undefined;
-    // we'll add more later (Scoreboard, History, etc.)
+    Scoreboard: undefined;
+    MatchSummary: { matchId: string };
 };

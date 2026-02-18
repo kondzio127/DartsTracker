@@ -20,7 +20,6 @@ export default function HomeScreen({ navigation }: Props) {
 
     const handleStartDummyMatch = () => {
         if (players.length < 2) {
-            // In a real app you’d show a nicer message
             console.log('Need at least 2 players to start a match');
             return;
         }
@@ -30,8 +29,10 @@ export default function HomeScreen({ navigation }: Props) {
         startMatch({
             playerIds: firstTwoIds,
             startScore: 501,
-            bestOfLegs: 3,
+            bestOfLegs: 1, // single-leg for now
         });
+
+        navigation.navigate('Scoreboard');
     };
 
     return (

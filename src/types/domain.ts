@@ -46,3 +46,16 @@ export interface Visit {
     createdAt: string;
 }
 
+// Simple record of an Around the Clock practice session
+export interface AroundTheClockSession {
+    id: string;
+    // we’ll link to Player later – for now we can leave this optional
+    playerId?: string;
+    createdAt: string;
+    finishedAt: string;
+    maxTarget: number;
+    dartsThrown: number;
+    bestStreak: number;
+}
+
+

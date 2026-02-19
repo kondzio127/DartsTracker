@@ -1,10 +1,19 @@
 // src/store/gameStore.ts
 import { create } from 'zustand';
-import { Player, Match, Leg } from '../types/domain';
+import { Player, Match, Leg, AroundTheClockSession } from '../types/domain';
 import { X01LegState, createInitialLegState, applyVisit } from '../engine/x01';
+import {
+    AroundTheClockState,
+    createInitialAroundTheClockState,
+    applyAroundTheClockDart,
+} from '../engine/aroundTheClock';
 
 // simple ID generator for local use
 const uuid = () => Math.random().toString(36).slice(2);
+
+// Standard Around-the-Clock is usually 3 darts per turn.
+// If you prefer switching after every dart, change this to 1.
+const DARTS_PER_TURN = 3;
 
 interface GameState {
     // Data
@@ -19,6 +28,14 @@ interface GameState {
     // Leg wins within the CURRENT match (for quick access)
     currentLegWins: Record<string, number>;
 
+    // Around the Clock (per-player state)
+    aroundTheClockStatesByPlayer: Record<string, AroundTheClockState>;
+    aroundTheClockSessions: AroundTheClockSession[];
+    aroundTheClockPlayerIds: string[];
+    aroundTheClockCurrentPlayerIndex: number;
+    aroundTheClockDartInTurn: number; // 0..DARTS_PER_TURN-1
+    aroundTheClockWinnerPlayerId?: string;
+
     // Actions
     addPlayer: (name: string, nickname?: string) => Player;
 
@@ -30,11 +47,12 @@ interface GameState {
 
     addVisit: (dartScores: number[]) => void;
 
-    // Finalise a finished leg, update match, and either:
-    // - start next leg, or
-    // - finish the match
-    // Returns whether match is finished and the matchId.
     finishLegIfNeeded: () => { matchFinished: boolean; matchId?: string };
+
+    // Practice actions
+    startAroundTheClock: (playerIds: string[], maxTarget?: number) => void;
+    registerAroundTheClockDart: (hit: boolean) => void;
+    resetAroundTheClock: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -45,8 +63,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     currentMatch: undefined,
     currentLegState: undefined,
     currentLegId: undefined,
-
     currentLegWins: {},
+
+    aroundTheClockStatesByPlayer: {},
+    aroundTheClockSessions: [],
+    aroundTheClockPlayerIds: [],
+    aroundTheClockCurrentPlayerIndex: 0,
+    aroundTheClockDartInTurn: 0,
+    aroundTheClockWinnerPlayerId: undefined,
 
     // ----- actions -----
 
@@ -65,13 +89,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         return newPlayer;
     },
 
+    // ---------- X01 MATCH FLOW ----------
+
     startMatch: ({ playerIds, startScore, bestOfLegs }) => {
         const { matches } = get();
 
         const matchId = uuid();
         const legId = uuid();
 
-        // bestOfLegs defaults to 1 (single leg) if not provided
         const normalizedBestOfLegs = bestOfLegs ?? 1;
 
         const initialLegWins: Record<string, number> = {};
@@ -114,20 +139,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             dartScores,
         });
 
-        // attach real legId instead of placeholder
         const visitWithLegId = { ...visit, legId: currentLegId };
 
         const newLegState: X01LegState = {
             ...updatedLegState,
-            visits: [
-                ...updatedLegState.visits.slice(0, -1),
-                visitWithLegId,
-            ],
+            visits: [...updatedLegState.visits.slice(0, -1), visitWithLegId],
         };
 
-        set({
-            currentLegState: newLegState,
-        });
+        set({ currentLegState: newLegState });
     },
 
     finishLegIfNeeded: () => {
@@ -139,7 +158,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             return { matchFinished: false };
         }
 
-        // ----- 1. Build the completed leg -----
         const completedLeg: Leg = {
             id: currentLegId,
             matchId: currentMatch.id,
@@ -149,10 +167,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             visits: currentLegState.visits,
         };
 
-        // ----- 2. Update the match with this leg -----
         const updatedLegs = [...currentMatch.legs, completedLeg];
 
-        // Recalculate leg wins
         const legWins: Record<string, number> = {};
         currentMatch.playerIds.forEach(pid => {
             legWins[pid] = 0;
@@ -170,17 +186,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             legWinsByPlayer: legWins,
         };
 
-        // Replace match in matches array
         const otherMatches = matches.filter(m => m.id !== currentMatch.id);
 
-        // ----- 3. Check if match is finished -----
-        const bestOfLegs = updatedMatch.bestOfLegs ?? 1;
-        const legsToWin = Math.floor(bestOfLegs / 2) + 1;
+        const bestOf = updatedMatch.bestOfLegs ?? 1;
+        const legsToWin = Math.floor(bestOf / 2) + 1;
 
         let matchFinished = false;
-
         for (const pid of updatedMatch.playerIds) {
-            if (legWins[pid] >= legsToWin) {
+            if ((legWins[pid] ?? 0) >= legsToWin) {
                 matchFinished = true;
                 break;
             }
@@ -203,9 +216,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             return { matchFinished: true, matchId: finishedMatch.id };
         }
 
-        // ----- 4. Match not finished → start a new leg with alternating start -----
-
-        // How many legs have now been played in this match
         const legsPlayed = updatedMatch.legs.length;
 
         const baseOrder = updatedMatch.playerIds;
@@ -227,5 +237,108 @@ export const useGameStore = create<GameState>((set, get) => ({
         });
 
         return { matchFinished: false, matchId: updatedMatch.id };
+    },
+
+    // ---------- AROUND THE CLOCK (COMPETITIVE MULTI-PLAYER) ----------
+
+    startAroundTheClock: (playerIds: string[], maxTarget: number = 20) => {
+        const states: Record<string, AroundTheClockState> = {};
+        for (const pid of playerIds) {
+            states[pid] = createInitialAroundTheClockState(maxTarget);
+        }
+
+        set({
+            aroundTheClockStatesByPlayer: states,
+            aroundTheClockPlayerIds: playerIds,
+            aroundTheClockCurrentPlayerIndex: 0,
+            aroundTheClockDartInTurn: 0,
+            aroundTheClockWinnerPlayerId: undefined,
+        });
+    },
+
+    registerAroundTheClockDart: (hit: boolean) => {
+        const {
+            aroundTheClockStatesByPlayer,
+            aroundTheClockPlayerIds,
+            aroundTheClockCurrentPlayerIndex,
+            aroundTheClockDartInTurn,
+            aroundTheClockWinnerPlayerId,
+            aroundTheClockSessions,
+        } = get();
+
+        // already finished
+        if (aroundTheClockWinnerPlayerId) return;
+        if (aroundTheClockPlayerIds.length === 0) return;
+
+        const currentPlayerId = aroundTheClockPlayerIds[aroundTheClockCurrentPlayerIndex];
+        const currentState = aroundTheClockStatesByPlayer[currentPlayerId];
+        if (!currentState) return;
+
+        const updatedPlayerState = applyAroundTheClockDart(currentState, hit);
+
+        const nextStates = {
+            ...aroundTheClockStatesByPlayer,
+            [currentPlayerId]: updatedPlayerState,
+        };
+
+        // If THIS player finishes, they win (standard competitive mode)
+        if (updatedPlayerState.isFinished) {
+            // total darts across all players
+            const totalDarts = Object.values(nextStates).reduce(
+                (sum, s) => sum + (s?.dartsThrown ?? 0),
+                0
+            );
+            const bestStreakOverall = Math.max(
+                ...Object.values(nextStates).map(s => s?.bestStreak ?? 0),
+                0
+            );
+
+            const session: AroundTheClockSession = {
+                id: uuid(),
+                playerId: currentPlayerId, // winner
+                createdAt: new Date().toISOString(),
+                finishedAt: new Date().toISOString(),
+                maxTarget: updatedPlayerState.maxTarget,
+                dartsThrown: totalDarts,
+                bestStreak: bestStreakOverall,
+            };
+
+            set({
+                aroundTheClockStatesByPlayer: nextStates,
+                aroundTheClockWinnerPlayerId: currentPlayerId,
+                aroundTheClockSessions: [...aroundTheClockSessions, session],
+            });
+
+            return;
+        }
+
+        // Otherwise: advance dart-in-turn, rotate player after DARTS_PER_TURN darts
+        const nextDartInTurn = aroundTheClockDartInTurn + 1;
+
+        if (nextDartInTurn >= DARTS_PER_TURN) {
+            const nextIndex =
+                (aroundTheClockCurrentPlayerIndex + 1) % aroundTheClockPlayerIds.length;
+
+            set({
+                aroundTheClockStatesByPlayer: nextStates,
+                aroundTheClockCurrentPlayerIndex: nextIndex,
+                aroundTheClockDartInTurn: 0,
+            });
+        } else {
+            set({
+                aroundTheClockStatesByPlayer: nextStates,
+                aroundTheClockDartInTurn: nextDartInTurn,
+            });
+        }
+    },
+
+    resetAroundTheClock: () => {
+        set({
+            aroundTheClockStatesByPlayer: {},
+            aroundTheClockPlayerIds: [],
+            aroundTheClockCurrentPlayerIndex: 0,
+            aroundTheClockDartInTurn: 0,
+            aroundTheClockWinnerPlayerId: undefined,
+        });
     },
 }));

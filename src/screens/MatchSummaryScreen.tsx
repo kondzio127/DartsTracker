@@ -20,18 +20,30 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
 
     if (!match) {
         return (
-            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
+            <View
+                style={{
+                    flex: 1,
+                    padding: 16,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
                 <Text>Match not found.</Text>
-                <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
+                <Button
+                    title="Back to Home"
+                    onPress={() => navigation.navigate('Home')}
+                />
             </View>
         );
     }
 
     const legWins = match.legWinsByPlayer ?? {};
     const bestOfLegs = match.bestOfLegs ?? 1;
+
+    const isSingleLeg = bestOfLegs === 1;
     const legsToWin = Math.floor(bestOfLegs / 2) + 1;
 
-    // Determine match winner by leg wins (works for single-leg too)
+    // Determine match winner by leg wins (works for 1–4 players)
     let winnerPlayerId: string | undefined;
     let maxWins = -1;
     for (const pid of match.playerIds) {
@@ -41,20 +53,28 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
             winnerPlayerId = pid;
         }
     }
-    const winnerName = getPlayerName(winnerPlayerId);
+    const winnerName = winnerPlayerId ? getPlayerName(winnerPlayerId) : 'N/A';
 
     return (
-        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}>
+        <ScrollView
+            contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}
+        >
             <Text style={{ fontSize: 20, fontWeight: '600' }}>Match Summary</Text>
 
             <Text>Date: {new Date(match.createdAt).toLocaleString()}</Text>
             <Text>Game mode: {match.mode}</Text>
             <Text>Start score: {match.startScore}</Text>
 
-            <Text>
-                Format: Best of {bestOfLegs} legs (first to {legsToWin})
-            </Text>
+            {isSingleLeg ? (
+                <Text>Format: Single leg</Text>
+            ) : (
+                <Text>
+                    Format: Best of {bestOfLegs} legs (first to {legsToWin})
+                </Text>
+            )}
+
             <Text>Legs played: {match.legs.length}</Text>
+            <Text>Number of players: {match.playerIds.length}</Text>
 
             <View style={{ marginTop: 12 }}>
                 <Text style={{ fontWeight: '600' }}>Players & leg wins:</Text>
@@ -92,4 +112,3 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
         </ScrollView>
     );
 }
-

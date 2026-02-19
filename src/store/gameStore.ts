@@ -3,25 +3,25 @@ import { create } from 'zustand';
 import { Player, Match, Leg } from '../types/domain';
 import { X01LegState, createInitialLegState, applyVisit } from '../engine/x01';
 
-// Very simple ID generator for now.
-// Good enough for local/offline use.
+// simple ID generator for local use
 const uuid = () => Math.random().toString(36).slice(2);
 
-// What lives in our global store
 interface GameState {
     // Data
     players: Player[];
     matches: Match[];
 
-    // The match currently being played (if any)
+    // Current x01 match + leg
     currentMatch?: Match;
-
-    // Current leg state for the active match
     currentLegState?: X01LegState;
     currentLegId?: string;
 
-    // Actions (functions we can call from components)
+    // Leg wins within the CURRENT match (for quick access)
+    currentLegWins: Record<string, number>;
+
+    // Actions
     addPlayer: (name: string, nickname?: string) => Player;
+
     startMatch: (config: {
         playerIds: string[];
         startScore: number;
@@ -29,20 +29,27 @@ interface GameState {
     }) => void;
 
     addVisit: (dartScores: number[]) => void;
-    finishLegIfNeeded: () => void;
+
+    // Finalise a finished leg, update match, and either:
+    // - start next leg, or
+    // - finish the match
+    // Returns whether match is finished and the matchId.
+    finishLegIfNeeded: () => { matchFinished: boolean; matchId?: string };
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
     // ----- initial state -----
     players: [],
     matches: [],
+
     currentMatch: undefined,
     currentLegState: undefined,
     currentLegId: undefined,
 
+    currentLegWins: {},
+
     // ----- actions -----
 
-    // Create a new Player and add it to the list
     addPlayer: (name: string, nickname?: string) => {
         const newPlayer: Player = {
             id: uuid(),
@@ -51,7 +58,6 @@ export const useGameStore = create<GameState>((set, get) => ({
             createdAt: new Date().toISOString(),
         };
 
-        // 'set' lets us update the store based on the previous state
         set(state => ({
             players: [...state.players, newPlayer],
         }));
@@ -59,21 +65,29 @@ export const useGameStore = create<GameState>((set, get) => ({
         return newPlayer;
     },
 
-// Start a new match with existing players
     startMatch: ({ playerIds, startScore, bestOfLegs }) => {
         const { matches } = get();
 
         const matchId = uuid();
         const legId = uuid();
 
+        // bestOfLegs defaults to 1 (single leg) if not provided
+        const normalizedBestOfLegs = bestOfLegs ?? 1;
+
+        const initialLegWins: Record<string, number> = {};
+        playerIds.forEach(pid => {
+            initialLegWins[pid] = 0;
+        });
+
         const newMatch: Match = {
             id: matchId,
             mode: 'X01',
             startScore,
-            bestOfLegs,
+            bestOfLegs: normalizedBestOfLegs,
             createdAt: new Date().toISOString(),
             playerIds,
             legs: [],
+            legWinsByPlayer: initialLegWins,
         };
 
         const initialLegState = createInitialLegState(playerIds, startScore);
@@ -83,6 +97,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             currentMatch: newMatch,
             currentLegState: initialLegState,
             currentLegId: legId,
+            currentLegWins: initialLegWins,
         });
     },
 
@@ -99,7 +114,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             dartScores,
         });
 
-        // attach the real legId instead of the placeholder
+        // attach real legId instead of placeholder
         const visitWithLegId = { ...visit, legId: currentLegId };
 
         const newLegState: X01LegState = {
@@ -117,10 +132,15 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     finishLegIfNeeded: () => {
         const { currentLegState, currentMatch, currentLegId, matches } = get();
-        if (!currentLegState || !currentMatch || !currentLegId) return;
-        if (!currentLegState.winnerPlayerId) return;
+        if (!currentLegState || !currentMatch || !currentLegId) {
+            return { matchFinished: false };
+        }
+        if (!currentLegState.winnerPlayerId) {
+            return { matchFinished: false };
+        }
 
-        const leg: Leg = {
+        // ----- 1. Build the completed leg -----
+        const completedLeg: Leg = {
             id: currentLegId,
             matchId: currentMatch.id,
             sequence: currentMatch.legs.length + 1,
@@ -129,19 +149,83 @@ export const useGameStore = create<GameState>((set, get) => ({
             visits: currentLegState.visits,
         };
 
+        // ----- 2. Update the match with this leg -----
+        const updatedLegs = [...currentMatch.legs, completedLeg];
+
+        // Recalculate leg wins
+        const legWins: Record<string, number> = {};
+        currentMatch.playerIds.forEach(pid => {
+            legWins[pid] = 0;
+        });
+
+        for (const leg of updatedLegs) {
+            if (leg.winnerPlayerId) {
+                legWins[leg.winnerPlayerId] = (legWins[leg.winnerPlayerId] ?? 0) + 1;
+            }
+        }
+
         const updatedMatch: Match = {
             ...currentMatch,
-            legs: [...currentMatch.legs, leg],
-            finishedAt: new Date().toISOString(),
+            legs: updatedLegs,
+            legWinsByPlayer: legWins,
         };
 
+        // Replace match in matches array
         const otherMatches = matches.filter(m => m.id !== currentMatch.id);
+
+        // ----- 3. Check if match is finished -----
+        const bestOfLegs = updatedMatch.bestOfLegs ?? 1;
+        const legsToWin = Math.floor(bestOfLegs / 2) + 1;
+
+        let matchFinished = false;
+
+        for (const pid of updatedMatch.playerIds) {
+            if (legWins[pid] >= legsToWin) {
+                matchFinished = true;
+                break;
+            }
+        }
+
+        if (matchFinished) {
+            const finishedMatch: Match = {
+                ...updatedMatch,
+                finishedAt: new Date().toISOString(),
+            };
+
+            set({
+                matches: [...otherMatches, finishedMatch],
+                currentMatch: undefined,
+                currentLegState: undefined,
+                currentLegId: undefined,
+                currentLegWins: {},
+            });
+
+            return { matchFinished: true, matchId: finishedMatch.id };
+        }
+
+        // ----- 4. Match not finished → start a new leg with alternating start -----
+
+        // How many legs have now been played in this match
+        const legsPlayed = updatedMatch.legs.length;
+
+        const baseOrder = updatedMatch.playerIds;
+        const startIndex = legsPlayed % baseOrder.length;
+        const rotatedOrder = [
+            ...baseOrder.slice(startIndex),
+            ...baseOrder.slice(0, startIndex),
+        ];
+
+        const newLegId = uuid();
+        const newLegState = createInitialLegState(rotatedOrder, updatedMatch.startScore);
 
         set({
             matches: [...otherMatches, updatedMatch],
-            currentMatch: undefined,
-            currentLegState: undefined,
-            currentLegId: undefined,
+            currentMatch: updatedMatch,
+            currentLegState: newLegState,
+            currentLegId: newLegId,
+            currentLegWins: legWins,
         });
+
+        return { matchFinished: false, matchId: updatedMatch.id };
     },
 }));

@@ -15,24 +15,39 @@ export default function ScoreboardScreen({ navigation }: Props) {
     const addVisit = useGameStore(state => state.addVisit);
     const finishLegIfNeeded = useGameStore(state => state.finishLegIfNeeded);
 
-
     const [inputScore, setInputScore] = useState('');
 
-    // When someone wins the leg, finalise and go to summary
+    // When a leg gets a winner, either start next leg or go to summary
     useEffect(() => {
-        if (currentLegState?.winnerPlayerId && currentMatch) {
-            finishLegIfNeeded();
-            navigation.replace('MatchSummary', { matchId: currentMatch.id });
-        }
-    }, [currentLegState?.winnerPlayerId]);
+        if (!currentLegState?.winnerPlayerId || !currentMatch) return;
 
+        const { matchFinished, matchId } = finishLegIfNeeded();
+
+        if (matchFinished && matchId) {
+            navigation.replace('MatchSummary', { matchId });
+        }
+        // If match is not finished, store has started a new leg.
+        // Scoreboard re-renders automatically with the new leg state.
+    }, [currentLegState?.winnerPlayerId, currentMatch, finishLegIfNeeded, navigation]);
+
+    // If there is no active match/leg, show a simple fallback
     if (!currentMatch || !currentLegState) {
         return (
-            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>No active match.</Text>
-        <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
-        </View>
-    );
+            <View
+                style={{
+                    flex: 1,
+                    padding: 16,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
+                <Text>No active match.</Text>
+                <Button
+                    title="Back to Home"
+                    onPress={() => navigation.navigate('Home')}
+                />
+            </View>
+        );
     }
 
     const findPlayerName = (id: string) =>
@@ -45,52 +60,55 @@ export default function ScoreboardScreen({ navigation }: Props) {
             return;
         }
 
+        // Just add the visit. The effect above will notice if the leg is now won.
         addVisit([score]); // treat input as total for 3 darts for now
         setInputScore('');
     };
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 16 }}>
-    <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 8 }}>Scoreboard</Text>
+        <View style={{ flex: 1, padding: 16 }}>
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 8 }}>
+                Scoreboard
+            </Text>
 
-    {currentMatch.playerIds.map(pid => (
-        <View
-            key={pid}
-        style={{
-        flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginVertical: 4,
-    }}
-    >
-        <Text>
-            {findPlayerName(pid)}{' '}
-        {pid === currentLegState.currentPlayerId ? '⟵' : ''}
-        </Text>
-        <Text>{currentLegState.scoresByPlayer[pid]}</Text>
-        <Text>
-        Avg:{' '}
-        {getLegAverage(currentLegState, pid).toFixed(1)}
-        </Text>
+            {currentMatch.playerIds.map(pid => (
+                <View
+                    key={pid}
+                    style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        marginVertical: 4,
+                    }}
+                >
+                    <Text>
+                        {findPlayerName(pid)}{' '}
+                        {pid === currentLegState.currentPlayerId ? '⟵' : ''}
+                    </Text>
+                    <Text>{currentLegState.scoresByPlayer[pid]}</Text>
+                    <Text>
+                        Avg:{' '}
+                        {getLegAverage(currentLegState, pid).toFixed(1)}
+                    </Text>
+                </View>
+            ))}
+
+            <View style={{ marginTop: 24 }}>
+                <Text style={{ marginBottom: 8 }}>
+                    Enter score for {findPlayerName(currentLegState.currentPlayerId)}
+                </Text>
+                <TextInput
+                    value={inputScore}
+                    onChangeText={setInputScore}
+                    keyboardType="numeric"
+                    style={{
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        padding: 8,
+                        marginBottom: 8,
+                    }}
+                />
+                <Button title="Submit" onPress={handleSubmit} />
+            </View>
         </View>
-    ))}
-
-    <View style={{ marginTop: 24 }}>
-    <Text style={{ marginBottom: 8 }}>
-    Enter score for {findPlayerName(currentLegState.currentPlayerId)}
-    </Text>
-    <TextInput
-    value={inputScore}
-    onChangeText={setInputScore}
-    keyboardType="numeric"
-    style={{
-        borderWidth: 1,
-            borderRadius: 8,
-            padding: 8,
-            marginBottom: 8,
-    }}
-    />
-    <Button title="Submit" onPress={handleSubmit} />
-    </View>
-    </View>
-);
+    );
 }

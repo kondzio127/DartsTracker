@@ -6,8 +6,11 @@ export interface Player {
     id: string;
     name: string;
     nickname?: string;
+    flag?: string;       // just a string for now e.g. "UK" or "BG"
+    isHidden?: boolean;  // soft-delete / hide from selection
     createdAt: string;
 }
+
 
 export interface Match {
     id: string;

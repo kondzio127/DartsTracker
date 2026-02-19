@@ -5,13 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Extend game functionality: add support for multiple game modes (X01 and Around the Clock), dynamic leg management, and enhanced match summaries.">
-      <change afterPath="$PROJECT_DIR$/src/engine/aroundTheClock.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/screens/AroundTheClockSummaryScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/screens/LegDetailScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/screens/PlayerFormScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils/stats.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/MatchSummaryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MatchSummaryScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/navigation/types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
     </list>
@@ -21,7 +28,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="26" />
+    <option name="cachedIndexableFilesCount" value="29" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -29,6 +36,7 @@
       <list>
         <option value="JavaScript File" />
         <option value="TypeScript File" />
+        <option value="TypeScript JSX File" />
       </list>
     </option>
   </component>
@@ -83,7 +91,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable",
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.gitlab.GitLabSettingsConfigurable",
     "ts.external.directory.path": "C:\\Users\\konra\\Projects\\darts-tracker\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
@@ -110,7 +118,7 @@
       <updated>1771453048441</updated>
       <workItem from="1771453050728" duration="10000" />
       <workItem from="1771453069030" duration="10000" />
-      <workItem from="1771453080735" duration="18962000" />
+      <workItem from="1771453080735" duration="23879000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />
@@ -136,7 +144,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771464162115</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Extend game functionality: add support for multiple game modes (X01 and Around the Clock), dynamic leg management, and enhanced match summaries.">
+      <option name="closed" value="true" />
+      <created>1771533885376</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1771533885376</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

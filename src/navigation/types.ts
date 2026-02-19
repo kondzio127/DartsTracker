@@ -1,8 +1,16 @@
 // src/navigation/types.ts
-
 export type RootStackParamList = {
     Home: undefined;
     NewMatch: undefined;
     Scoreboard: undefined;
     MatchSummary: { matchId: string };
+    AroundTheClock: undefined;
+    AroundTheClockSummary: undefined;
+
+    Players: undefined;
+    PlayerForm: { playerId?: string } | undefined;
+
+    History: undefined;
+    MatchDetail: { matchId: string };
 };
+

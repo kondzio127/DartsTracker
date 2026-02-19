@@ -61,7 +61,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
         }
 
         // Just add the visit. The effect above will notice if the leg is now won.
-        addVisit([score]); // treat input as total for 3 darts for now
+        addVisit([score, 0, 0]); // treat input as total for 3 darts for now
         setInputScore('');
     };
 

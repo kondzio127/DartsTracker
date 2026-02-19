@@ -58,6 +58,10 @@ export default function HomeScreen({ navigation }: Props) {
                 title="Go to New Match"
                 onPress={() => navigation.navigate('NewMatch')}
             />
+            <Button title="Players" onPress={() => navigation.navigate('Players')} />
+            <Button title="History" onPress={() => navigation.navigate('History')} />
+            <Button title="New Game" onPress={() => navigation.navigate('NewMatch')} />
+
         </View>
     );
 }

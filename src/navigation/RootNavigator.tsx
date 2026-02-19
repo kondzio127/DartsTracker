@@ -9,6 +9,12 @@ import ScoreboardScreen from '../screens/ScoreboardScreen';
 import MatchSummaryScreen from '../screens/MatchSummaryScreen';
 import AroundTheClockScreen from '../screens/AroundTheClockScreen';
 import AroundTheClockSummaryScreen from '../screens/AroundTheClockSummaryScreen';
+import PlayersScreen from '../screens/PlayersScreen';
+import PlayerFormScreen from '../screens/PlayerFormScreen';
+import HistoryScreen from '../screens/HistoryScreen';
+import MatchDetailScreen from '../screens/MatchDetailScreen';
+import LegDetailScreen from '../screens/LegDetailScreen';
+
 
 // All possible screens + their params
 export type RootStackParamList = {
@@ -18,7 +24,16 @@ export type RootStackParamList = {
     MatchSummary: { matchId: string };
     AroundTheClock: undefined;
     AroundTheClockSummary: undefined;
+
+    Players: undefined;
+    PlayerForm: { playerId?: string } | undefined;
+
+    History: undefined;
+    MatchDetail: { matchId: string };
+
+    LegDetail: { matchId: string; legId: string };
 };
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -35,6 +50,11 @@ export default function RootNavigator() {
                     name="AroundTheClockSummary"
                     component={AroundTheClockSummaryScreen}
                 />
+                <Stack.Screen name="Players" component={PlayersScreen} />
+                <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
+                <Stack.Screen name="History" component={HistoryScreen} />
+                <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
+                <Stack.Screen name="LegDetail" component={LegDetailScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

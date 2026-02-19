@@ -1,202 +1,233 @@
 // src/screens/NewMatchScreen.tsx
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Button, Pressable, ScrollView, TextInput, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewMatch'>;
 
+type GameModeUI = 'X01' | 'AROUND_THE_CLOCK';
+type FormatType = 'single' | 'bestOf';
+
 export default function NewMatchScreen({ navigation }: Props) {
-    const addPlayer = useGameStore(s => s.addPlayer);
+    const players = useGameStore(s => s.players);
     const startMatch = useGameStore(s => s.startMatch);
     const startAroundTheClock = useGameStore(s => s.startAroundTheClock);
 
-    // Default is X01, so we start with 2 player slots
-    const [playerNames, setPlayerNames] = useState<string[]>(['', '']);
+    const activePlayers = useMemo(
+        () =>
+            [...players]
+                .filter(p => !p.isHidden)
+                .sort((a, b) => a.name.localeCompare(b.name)),
+        [players]
+    );
 
-    // X01 settings
-    const [startScore, setStartScore] = useState('501');
-    const [formatType, setFormatType] = useState<'single' | 'bestOf'>('single');
-    const [bestOfLegs, setBestOfLegs] = useState('3');
+    const [gameMode, setGameMode] = useState<GameModeUI>('X01');
+    const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
 
-    // Game mode selection
-    const [gameMode, setGameMode] = useState<'X01' | 'AROUND_THE_CLOCK'>('X01');
+    // X01 config
+    const [startScore, setStartScore] = useState<number>(501);
+    const [formatType, setFormatType] = useState<FormatType>('single');
+    const [bestOfLegs, setBestOfLegs] = useState<number>(3);
 
-    // Helper to change mode and adjust player inputs (default counts per mode)
-    const handleSetGameMode = (mode: 'X01' | 'AROUND_THE_CLOCK') => {
-        setGameMode(mode);
+    // Around the Clock config (optional)
+    const [maxTarget, setMaxTarget] = useState<number>(20);
 
-        setPlayerNames(prev => {
-            // keep whatever the user already typed in slot 1
-            const first = (prev[0] ?? '');
+    const maxSelectablePlayers = 4;
 
-            if (mode === 'AROUND_THE_CLOCK') {
-                // Default to EXACTLY 1 player input for practice
-                return [first];
+    const toggleSelect = (playerId: string) => {
+        setSelectedPlayerIds(prev => {
+            if (prev.includes(playerId)) {
+                return prev.filter(id => id !== playerId);
             }
-
-            // mode === 'X01'
-            // Default to AT LEAST 2 player inputs, keeping what user typed
-            const second = (prev[1] ?? '');
-            let next = [first, second];
-
-            // If they previously had more (from x01), keep them (up to 4)
-            // If they came from ATC (1 slot), this ensures we have 2 slots.
-            if (prev.length > 2) {
-                next = [...next, ...prev.slice(2, 4)];
-            }
-
-            return next;
+            if (prev.length >= maxSelectablePlayers) return prev;
+            return [...prev, playerId];
         });
     };
 
+    const canStart =
+        selectedPlayerIds.length >= 1 && selectedPlayerIds.length <= maxSelectablePlayers;
 
-    const handleChangePlayerName = (index: number, text: string) => {
-        setPlayerNames(prev => {
-            const next = [...prev];
-            next[index] = text;
-            return next;
-        });
+    const normalizeBestOfLegs = (n: number) => {
+        // Best-of should be odd (3,5,7...) so there’s always a majority winner.
+        if (n < 1) return 1;
+        return n % 2 === 0 ? n + 1 : n;
     };
 
-    const handleAddPlayer = () => {
-        setPlayerNames(prev => {
-            if (prev.length >= 4) return prev; // cap at 4
-            return [...prev, ''];
-        });
-    };
-
-    const handleRemovePlayer = () => {
-        setPlayerNames(prev => {
-            if (prev.length <= 1) return prev; // min 1 player overall
-            const next = [...prev];
-            next.pop();
-            return next;
-        });
-    };
-
-    const handleStart = () => {
-        const validNames = playerNames.map(n => n.trim()).filter(n => n.length > 0);
-
-        if (validNames.length < 1) {
-            Alert.alert('Add at least one player', 'Please enter at least one player name.');
+    const onStart = () => {
+        if (!canStart) {
+            Alert.alert('Select players', 'Pick at least 1 player (up to 4).');
             return;
         }
 
         if (gameMode === 'X01') {
-            // For X01 we *prefer* 2+ players, but we allow 1 (solo practice)
-            const playerIds = validNames.map(name => addPlayer(name).id);
-
-            const numericStartScore = Number(startScore) || 501;
-
-            let legs: number;
-            if (formatType === 'single') {
-                legs = 1;
-            } else {
-                const parsed = Number(bestOfLegs);
-                legs = Number.isNaN(parsed) || parsed < 1 ? 3 : Math.floor(parsed);
-            }
+            const legs = formatType === 'single' ? 1 : normalizeBestOfLegs(bestOfLegs);
 
             startMatch({
-                playerIds,
-                startScore: numericStartScore,
+                playerIds: selectedPlayerIds,
+                startScore: startScore || 501,
                 bestOfLegs: legs,
             });
 
             navigation.navigate('Scoreboard');
-        } else {
-            // AROUND_THE_CLOCK: use all entered names as session players
-            const playerIds = validNames.map(name => addPlayer(name).id);
-            startAroundTheClock(playerIds);
-            navigation.navigate('AroundTheClock');
+            return;
         }
+
+        // Around the Clock (your store supports competitive multi-player)
+        const mt = maxTarget >= 1 ? maxTarget : 20;
+        startAroundTheClock(selectedPlayerIds, mt);
+        navigation.navigate('AroundTheClock');
     };
 
-    const canAddPlayer = playerNames.length < 4;
-    const canRemovePlayer = playerNames.length > 1; // global min 1 player
+    const clearSelection = () => setSelectedPlayerIds([]);
+
+    const playerLabel = (id: string) => {
+        const p = players.find(x => x.id === id);
+        return p ? `${p.name}${p.nickname ? ` (${p.nickname})` : ''}` : id;
+    };
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 16 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>New Game</Text>
 
             {/* Game mode */}
-            <Text style={{ marginTop: 8, fontWeight: '500' }}>Game mode</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                <Button title="X01" onPress={() => handleSetGameMode('X01')} />
+            <Text style={{ fontWeight: '600' }}>Game mode</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
                 <Button
-                    title="Around the Clock"
-                    onPress={() => handleSetGameMode('AROUND_THE_CLOCK')}
-                />
-            </View>
-
-            {/* Player names */}
-            <Text style={{ marginTop: 8, fontWeight: '500' }}>Players (1–4)</Text>
-            {playerNames.map((name, index) => (
-                <TextInput
-                    key={index}
-                    placeholder={`Player ${index + 1} name`}
-                    value={name}
-                    onChangeText={text => handleChangePlayerName(index, text)}
-                    style={{
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        padding: 8,
-                        marginBottom: 8,
+                    title="X01"
+                    onPress={() => {
+                        setGameMode('X01');
+                        clearSelection();
                     }}
                 />
-            ))}
-
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
                 <Button
-                    title="Add player"
-                    onPress={handleAddPlayer}
-                    disabled={!canAddPlayer}
-                />
-                <Button
-                    title="Remove player"
-                    onPress={handleRemovePlayer}
-                    disabled={!canRemovePlayer}
+                    title="Around the Clock"
+                    onPress={() => {
+                        setGameMode('AROUND_THE_CLOCK');
+                        clearSelection();
+                    }}
                 />
             </View>
 
-            {/* X01-only settings */}
-            {gameMode === 'X01' && (
-                <>
-                    <Text style={{ marginTop: 16, fontWeight: '500' }}>Start score</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                        <Button title="301" onPress={() => setStartScore('301')} />
-                        <Button title="501" onPress={() => setStartScore('501')} />
-                        <Button title="701" onPress={() => setStartScore('701')} />
+            {/* Player selection */}
+            <View style={{ marginTop: 8 }}>
+                <Text style={{ fontWeight: '600' }}>
+                    Select players (up to {maxSelectablePlayers})
+                </Text>
+
+                {activePlayers.length === 0 ? (
+                    <View style={{ gap: 8, marginTop: 8 }}>
+                        <Text>No players yet.</Text>
+
+                        {/* Change this route if your navigator uses a different name */}
+                        <Button
+                            title="Add a player"
+                            onPress={() => navigation.navigate('Players')}
+                        />
                     </View>
+                ) : (
+                    <View style={{ gap: 8, marginTop: 8 }}>
+                        {activePlayers.map(p => {
+                            const selected = selectedPlayerIds.includes(p.id);
+                            return (
+                                <Pressable
+                                    key={p.id}
+                                    onPress={() => toggleSelect(p.id)}
+                                    style={{
+                                        borderWidth: 1,
+                                        borderRadius: 10,
+                                        padding: 12,
+                                        opacity: selected ? 1 : 0.75,
+                                    }}
+                                >
+                                    <Text style={{ fontWeight: '700' }}>
+                                        {selected ? '✅ ' : ''}{p.name}{p.nickname ? ` (${p.nickname})` : ''}
+                                    </Text>
+                                    <Text style={{ opacity: 0.8 }}>
+                                        {p.flag ? `Flag: ${p.flag}` : 'Flag: —'}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
+
+                        {/* Change this route if your navigator uses a different name */}
+                        <Button
+                            title="+ Add new player"
+                            onPress={() => navigation.navigate('Players')}
+                        />
+
+                        {selectedPlayerIds.length > 0 && (
+                            <View style={{ marginTop: 6 }}>
+                                <Text style={{ opacity: 0.8 }}>
+                                    Selected: {selectedPlayerIds.map(playerLabel).join(', ')}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+            </View>
+
+            {/* X01 settings */}
+            {gameMode === 'X01' && (
+                <View style={{ marginTop: 16, gap: 12 }}>
+                    <Text style={{ fontWeight: '600' }}>Start score</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <Button title="301" onPress={() => setStartScore(301)} />
+                        <Button title="501" onPress={() => setStartScore(501)} />
+                        <Button title="701" onPress={() => setStartScore(701)} />
+                    </View>
+
+                    <Text style={{ opacity: 0.8 }}>Custom start score</Text>
                     <TextInput
-                        value={startScore}
-                        onChangeText={setStartScore}
+                        value={String(startScore)}
+                        onChangeText={(t) => setStartScore(Number(t.replace(/[^0-9]/g, '')) || 0)}
                         keyboardType="numeric"
-                        style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
+                        style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
                     />
 
-                    <Text style={{ marginTop: 16, fontWeight: '500' }}>Match format</Text>
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                    <Text style={{ fontWeight: '600' }}>Match format</Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
                         <Button title="Single leg" onPress={() => setFormatType('single')} />
                         <Button title="Best of N legs" onPress={() => setFormatType('bestOf')} />
                     </View>
 
                     {formatType === 'bestOf' && (
-                        <View>
-                            <Text>Best of how many legs?</Text>
+                        <View style={{ gap: 8 }}>
+                            <Text style={{ opacity: 0.8 }}>Best of (odd number recommended)</Text>
                             <TextInput
-                                value={bestOfLegs}
-                                onChangeText={setBestOfLegs}
+                                value={String(bestOfLegs)}
+                                onChangeText={(t) => setBestOfLegs(Number(t.replace(/[^0-9]/g, '')) || 1)}
                                 keyboardType="numeric"
-                                style={{ borderWidth: 1, borderRadius: 8, padding: 8 }}
+                                style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
                             />
+                            <Text style={{ opacity: 0.8 }}>
+                                Will use: {normalizeBestOfLegs(bestOfLegs)} (first to{' '}
+                                {Math.floor(normalizeBestOfLegs(bestOfLegs) / 2) + 1})
+                            </Text>
                         </View>
                     )}
-                </>
+                </View>
             )}
 
-            <Button title="Start" onPress={handleStart} />
-        </View>
+            {/* Around the Clock settings */}
+            {gameMode === 'AROUND_THE_CLOCK' && (
+                <View style={{ marginTop: 16, gap: 8 }}>
+                    <Text style={{ fontWeight: '600' }}>Around the Clock settings</Text>
+                    <Text style={{ opacity: 0.8 }}>Max target (usually 20)</Text>
+                    <TextInput
+                        value={String(maxTarget)}
+                        onChangeText={(t) => setMaxTarget(Number(t.replace(/[^0-9]/g, '')) || 20)}
+                        keyboardType="numeric"
+                        style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
+                    />
+                </View>
+            )}
+
+            <View style={{ marginTop: 20, gap: 8 }}>
+                <Button title="Start" onPress={onStart} disabled={!canStart} />
+                <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
+            </View>
+        </ScrollView>
     );
 }

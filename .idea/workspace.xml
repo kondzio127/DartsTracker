@@ -4,13 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add player management, history tracking, and stats features&#10;&#10;Integrate player-related screens (add/edit players, list, history). Expand navigation with new routes. Add utilities for match stats and enhance match configuration with advanced modes.">
-      <change afterPath="$PROJECT_DIR$/src/components/AppButton.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" afterDir="false" />
-    </list>
+    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Replace Button components with a reusable AppButton across all screens for consistency and maintainability." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -107,7 +101,7 @@
       <updated>1771453048441</updated>
       <workItem from="1771453050728" duration="10000" />
       <workItem from="1771453069030" duration="10000" />
-      <workItem from="1771453080735" duration="25034000" />
+      <workItem from="1771453080735" duration="25360000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />
@@ -149,7 +143,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771545296521</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Replace Button components with a reusable AppButton across all screens for consistency and maintainability.">
+      <option name="closed" value="true" />
+      <created>1771546319532</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1771546319532</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -171,6 +173,7 @@
     <MESSAGE value="Add scoring engine, leg state management, and new screens (Scoreboard, Match Summary) for X01 mode" />
     <MESSAGE value="Extend game functionality: add support for multiple game modes (X01 and Around the Clock), dynamic leg management, and enhanced match summaries." />
     <MESSAGE value="Add player management, history tracking, and stats features&#10;&#10;Integrate player-related screens (add/edit players, list, history). Expand navigation with new routes. Add utilities for match stats and enhance match configuration with advanced modes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add player management, history tracking, and stats features&#10;&#10;Integrate player-related screens (add/edit players, list, history). Expand navigation with new routes. Add utilities for match stats and enhance match configuration with advanced modes." />
+    <MESSAGE value="Replace Button components with a reusable AppButton across all screens for consistency and maintainability." />
+    <option name="LAST_COMMIT_MESSAGE" value="Replace Button components with a reusable AppButton across all screens for consistency and maintainability." />
   </component>
 </project>

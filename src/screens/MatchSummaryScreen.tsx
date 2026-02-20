@@ -1,6 +1,6 @@
 // src/screens/MatchSummaryScreen.tsx
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useCallback, useLayoutEffect } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -19,21 +19,27 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
     const getPlayerName = (playerId?: string) =>
         players.find(p => p.id === playerId)?.name ?? (playerId ?? 'Unknown');
 
+    // ✅ This is the key: make Home the root so you cannot swipe back to Summary
+    const goHomeReset = useCallback(() => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+        });
+    }, [navigation]);
+
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerLeft: () => null,
+            headerRight: () => null,
+            gestureEnabled: false,
+        });
+    }, [navigation, goHomeReset]);
+
     if (!match) {
         return (
-            <View
-                style={{
-                    flex: 1,
-                    padding: 16,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                }}
-            >
+            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
                 <Text>Match not found.</Text>
-                <AppButton
-                    label="Back to Home"
-                    onPress={() => navigation.navigate('Home')}
-                />
+                <AppButton label="Back to Home" onPress={goHomeReset} />
             </View>
         );
     }
@@ -44,7 +50,6 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
     const isSingleLeg = bestOfLegs === 1;
     const legsToWin = Math.floor(bestOfLegs / 2) + 1;
 
-    // Determine match winner by leg wins (works for 1–4 players)
     let winnerPlayerId: string | undefined;
     let maxWins = -1;
     for (const pid of match.playerIds) {
@@ -57,9 +62,7 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
     const winnerName = winnerPlayerId ? getPlayerName(winnerPlayerId) : 'N/A';
 
     return (
-        <ScrollView
-            contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}
-        >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>Match Summary</Text>
 
             <Text>Date: {new Date(match.createdAt).toLocaleString()}</Text>
@@ -69,9 +72,7 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
             {isSingleLeg ? (
                 <Text>Format: Single leg</Text>
             ) : (
-                <Text>
-                    Format: Best of {bestOfLegs} legs (first to {legsToWin})
-                </Text>
+                <Text>Format: Best of {bestOfLegs} legs (first to {legsToWin})</Text>
             )}
 
             <Text>Legs played: {match.legs.length}</Text>
@@ -92,8 +93,7 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
                 {match.legs.map(leg => (
                     <View key={leg.id} style={{ marginVertical: 4 }}>
                         <Text>
-                            Leg {leg.sequence}:{' '}
-                            Starter: {getPlayerName(leg.startingPlayerId)} | Winner:{' '}
+                            Leg {leg.sequence}: Starter: {getPlayerName(leg.startingPlayerId)} | Winner:{' '}
                             {getPlayerName(leg.winnerPlayerId)}
                         </Text>
                     </View>
@@ -105,10 +105,8 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
             </Text>
 
             <View style={{ marginTop: 24, gap: 8 }}>
-                <AppButton
-                    label="Back to Home"
-                    onPress={() => navigation.navigate('Home')}
-                />
+                {/* ✅ Also reset here */}
+                <AppButton label="Back to Home" onPress={goHomeReset} />
             </View>
         </ScrollView>
     );

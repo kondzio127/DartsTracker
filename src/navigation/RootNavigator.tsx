@@ -15,8 +15,6 @@ import HistoryScreen from '../screens/HistoryScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import LegDetailScreen from '../screens/LegDetailScreen';
 
-
-// All possible screens + their params
 export type RootStackParamList = {
     Home: undefined;
     NewMatch: undefined;
@@ -30,10 +28,8 @@ export type RootStackParamList = {
 
     History: undefined;
     MatchDetail: { matchId: string };
-
     LegDetail: { matchId: string; legId: string };
 };
-
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,20 +37,58 @@ export default function RootNavigator() {
     return (
         <NavigationContainer>
             <Stack.Navigator initialRouteName="Home">
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen name="NewMatch" component={NewMatchScreen} />
-                <Stack.Screen name="Scoreboard" component={ScoreboardScreen} />
-                <Stack.Screen name="MatchSummary" component={MatchSummaryScreen} />
-                <Stack.Screen name="AroundTheClock" component={AroundTheClockScreen} />
+                {/* Home: no header */}
+                <Stack.Screen
+                    name="Home"
+                    component={HomeScreen}
+                    options={{ headerShown: false }}
+                />
+
+                {/* Normal drill-in screens: back is appropriate */}
+                <Stack.Screen name="NewMatch" component={NewMatchScreen} options={{ title: 'New Game' }} />
+                <Stack.Screen name="Players" component={PlayersScreen} options={{ title: 'Players' }} />
+                <Stack.Screen name="PlayerForm" component={PlayerFormScreen} options={{ title: 'Player' }} />
+                <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
+                <Stack.Screen name="MatchDetail" component={MatchDetailScreen} options={{ title: 'Match' }} />
+                <Stack.Screen name="LegDetail" component={LegDetailScreen} options={{ title: 'Leg' }} />
+
+                {/* Stateful/terminal screens: hide back arrow + disable swipe-back */}
+                <Stack.Screen
+                    name="Scoreboard"
+                    component={ScoreboardScreen}
+                    options={{
+                        title: 'Scoreboard',
+                        headerBackVisible: false,
+                        gestureEnabled: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="AroundTheClock"
+                    component={AroundTheClockScreen}
+                    options={{
+                        title: 'Around the Clock',
+                        headerBackVisible: false,
+                        gestureEnabled: false,
+                    }}
+                />
+                <Stack.Screen
+                    name="MatchSummary"
+                    component={MatchSummaryScreen}
+                    options={{
+                        title: 'Summary',
+                        headerBackVisible: false,
+                        gestureEnabled: false,
+                    }}
+                />
                 <Stack.Screen
                     name="AroundTheClockSummary"
                     component={AroundTheClockSummaryScreen}
+                    options={{
+                        title: 'Summary',
+                        headerBackVisible: false,
+                        gestureEnabled: false,
+                    }}
                 />
-                <Stack.Screen name="Players" component={PlayersScreen} />
-                <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
-                <Stack.Screen name="History" component={HistoryScreen} />
-                <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
-                <Stack.Screen name="LegDetail" component={LegDetailScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

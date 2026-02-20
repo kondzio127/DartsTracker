@@ -1,11 +1,11 @@
 // src/screens/AroundTheClockSummaryScreen.tsx
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useCallback, useLayoutEffect } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import { getAverageDartsPerNumber } from '../engine/aroundTheClock';
-import AppButton from "../components/AppButton";
+import AppButton from '../components/AppButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClockSummary'>;
 
@@ -18,36 +18,47 @@ export default function AroundTheClockSummaryScreen({ navigation }: Props) {
     const resetAroundTheClock = useGameStore(s => s.resetAroundTheClock);
     const players = useGameStore(s => s.players);
 
-    const getPlayerName = (id: string) =>
-        players.find(p => p.id === id)?.name ?? id;
+    const getPlayerName = (id: string) => players.find(p => p.id === id)?.name ?? id;
+
+    const handleDone = useCallback(() => {
+        resetAroundTheClock();
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+        });
+    }, [resetAroundTheClock, navigation]);
+
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerLeft: () => null,
+            headerRight: () => (
+                <Pressable onPress={handleDone} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <Text style={{ fontWeight: '600' }}>Done</Text>
+                </Pressable>
+            ),
+            gestureEnabled: false,
+        });
+    }, [navigation, handleDone]);
 
     if (playerIds.length === 0) {
         return (
-            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
-                <Text>No practice session found.</Text>
-                <AppButton label="Back to Home" onPress={() => navigation.navigate('Home')} />
+            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                <Text>No session found.</Text>
+                <AppButton label="Done" onPress={() => navigation.navigate('Home')} />
             </View>
         );
     }
 
     const firstState = statesByPlayer[playerIds[0]];
     const maxTarget = firstState?.maxTarget ?? 20;
-
     const winnerName = winnerPlayerId ? getPlayerName(winnerPlayerId) : '—';
-
-    const handleBackHome = () => {
-        resetAroundTheClock();
-        navigation.navigate('Home');
-    };
 
     return (
         <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>Practice Summary</Text>
             <Text style={{ fontWeight: '500' }}>Game mode: Around the Clock</Text>
             <Text>Numbers: 1 → {maxTarget}</Text>
-            <Text style={{ marginTop: 8, fontSize: 16, fontWeight: '700' }}>
-                Winner: {winnerName}
-            </Text>
+            <Text style={{ marginTop: 8, fontSize: 16, fontWeight: '700' }}>Winner: {winnerName}</Text>
 
             <View style={{ marginTop: 12 }}>
                 <Text style={{ fontWeight: '700', marginBottom: 8 }}>Per-player stats</Text>
@@ -60,15 +71,7 @@ export default function AroundTheClockSummaryScreen({ navigation }: Props) {
                     const finishedText = s.isFinished ? 'Finished' : 'Not finished';
 
                     return (
-                        <View
-                            key={pid}
-                            style={{
-                                borderWidth: 1,
-                                borderRadius: 10,
-                                padding: 10,
-                                marginBottom: 10,
-                            }}
-                        >
+                        <View key={pid} style={{ borderWidth: 1, borderRadius: 10, padding: 10, marginBottom: 10 }}>
                             <Text style={{ fontWeight: '700' }}>{getPlayerName(pid)}</Text>
                             <Text>{finishedText}</Text>
                             <Text>Reached: {Math.min(s.currentTarget, s.maxTarget)} / {s.maxTarget}</Text>
@@ -88,7 +91,7 @@ export default function AroundTheClockSummaryScreen({ navigation }: Props) {
                         navigation.replace('AroundTheClock');
                     }}
                 />
-                <AppButton label="Back to Home" onPress={handleBackHome} />
+                <AppButton label="Done" onPress={handleDone} />
             </View>
         </ScrollView>
     );

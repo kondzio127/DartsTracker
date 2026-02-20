@@ -43,6 +43,10 @@ interface GameState {
     aroundTheClockStartedAt?: string;
     aroundTheClockWinnerPlayerId?: string;
 
+    // Navigation-safe exit actions
+    abandonMatch: () => void;
+    abandonPractice: () => void;
+
     // Actions
     addPlayer: (name: string, nickname?: string, flag?: string) => Player;
 
@@ -350,6 +354,26 @@ export const useGameStore = create<GameState>()(
             },
 
             resetAroundTheClock: () => {
+                set({
+                    aroundTheClockStatesByPlayer: {},
+                    aroundTheClockPlayerIds: [],
+                    aroundTheClockCurrentPlayerIndex: 0,
+                    aroundTheClockDartInTurn: 0,
+                    aroundTheClockStartedAt: undefined,
+                    aroundTheClockWinnerPlayerId: undefined,
+                });
+            },
+
+            abandonMatch: () => {
+                set({
+                    currentMatch: undefined,
+                    currentLegState: undefined,
+                    currentLegId: undefined,
+                    currentLegWins: {},
+                });
+            },
+
+            abandonPractice: () => {
                 set({
                     aroundTheClockStatesByPlayer: {},
                     aroundTheClockPlayerIds: [],

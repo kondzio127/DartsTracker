@@ -1,22 +1,81 @@
 // src/screens/ScoreboardScreen.tsx
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Alert } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, Alert, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import { getLegAverage } from '../engine/x01';
-import AppButton from "../components/AppButton";
+import AppButton from '../components/AppButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scoreboard'>;
 
 export default function ScoreboardScreen({ navigation }: Props) {
-    const currentMatch = useGameStore(state => state.currentMatch);
-    const currentLegState = useGameStore(state => state.currentLegState);
-    const players = useGameStore(state => state.players);
-    const addVisit = useGameStore(state => state.addVisit);
-    const finishLegIfNeeded = useGameStore(state => state.finishLegIfNeeded);
+    const currentMatch = useGameStore(s => s.currentMatch);
+    const currentLegState = useGameStore(s => s.currentLegState);
+    const players = useGameStore(s => s.players);
+    const addVisit = useGameStore(s => s.addVisit);
+    const finishLegIfNeeded = useGameStore(s => s.finishLegIfNeeded);
+    const abandonMatch = useGameStore(s => s.abandonMatch);
 
     const [inputScore, setInputScore] = useState('');
+
+    const isActive = Boolean(currentMatch && currentLegState);
+
+    // Allows programmatic navigation (e.g. match finished -> summary) without the exit prompt.
+    const allowRemoveRef = useRef(false);
+
+    const confirmExit = useCallback(() => {
+        Alert.alert(
+            'Exit match?',
+            'You will lose the current in-progress match.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Exit',
+                    style: 'destructive',
+                    onPress: () => {
+                        allowRemoveRef.current = true;
+                        abandonMatch();
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Home' }],
+                        });
+                    },
+                },
+            ]
+        );
+    }, [abandonMatch, navigation]);
+
+    // Header: no back arrow; explicit Exit button.
+    useLayoutEffect(() => {
+        if (!isActive) {
+            navigation.setOptions({ headerRight: () => null });
+            return;
+        }
+
+        navigation.setOptions({
+            headerLeft: () => null,
+            headerRight: () => (
+                <Pressable onPress={confirmExit} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+                    <Text style={{ fontWeight: '600' }}>Exit</Text>
+                </Pressable>
+            ),
+            gestureEnabled: false, // helps on iOS (if supported by your navigator)
+        });
+    }, [navigation, isActive, confirmExit]);
+
+    // Block swipe-back / hardware back / header back while active
+    useEffect(() => {
+        if (!isActive) return;
+
+        const unsub = navigation.addListener('beforeRemove', (e) => {
+            if (allowRemoveRef.current) return;
+            e.preventDefault();
+            confirmExit();
+        });
+
+        return unsub;
+    }, [navigation, isActive, confirmExit]);
 
     // When a leg gets a winner, either start next leg or go to summary
     useEffect(() => {
@@ -25,34 +84,21 @@ export default function ScoreboardScreen({ navigation }: Props) {
         const { matchFinished, matchId } = finishLegIfNeeded();
 
         if (matchFinished && matchId) {
+            allowRemoveRef.current = true;
             navigation.replace('MatchSummary', { matchId });
         }
-        // If match is not finished, store has started a new leg.
-        // Scoreboard re-renders automatically with the new leg state.
     }, [currentLegState?.winnerPlayerId, currentMatch, finishLegIfNeeded, navigation]);
 
-    // If there is no active match/leg, show a simple fallback
     if (!currentMatch || !currentLegState) {
         return (
-            <View
-                style={{
-                    flex: 1,
-                    padding: 16,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                }}
-            >
+            <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
                 <Text>No active match.</Text>
-                <AppButton
-                    label="Back to Home"
-                    onPress={() => navigation.navigate('Home')}
-                />
+                <AppButton label="Back to Home" onPress={() => navigation.navigate('Home')} />
             </View>
         );
     }
 
-    const findPlayerName = (id: string) =>
-        players.find(p => p.id === id)?.name ?? 'Player';
+    const findPlayerName = (id: string) => players.find(p => p.id === id)?.name ?? 'Player';
 
     const handleSubmit = () => {
         const score = Number(inputScore);
@@ -61,35 +107,21 @@ export default function ScoreboardScreen({ navigation }: Props) {
             return;
         }
 
-        // Just add the visit. The effect above will notice if the leg is now won.
-        addVisit([score, 0, 0]); // treat input as total for 3 darts for now
+        addVisit([score, 0, 0]); // total for 3 darts (MVP)
         setInputScore('');
     };
 
     return (
         <View style={{ flex: 1, padding: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 8 }}>
-                Scoreboard
-            </Text>
+            <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 8 }}>Scoreboard</Text>
 
             {currentMatch.playerIds.map(pid => (
-                <View
-                    key={pid}
-                    style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        marginVertical: 4,
-                    }}
-                >
+                <View key={pid} style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 4 }}>
                     <Text>
-                        {findPlayerName(pid)}{' '}
-                        {pid === currentLegState.currentPlayerId ? '⟵' : ''}
+                        {findPlayerName(pid)} {pid === currentLegState.currentPlayerId ? '⟵' : ''}
                     </Text>
                     <Text>{currentLegState.scoresByPlayer[pid]}</Text>
-                    <Text>
-                        Avg:{' '}
-                        {getLegAverage(currentLegState, pid).toFixed(1)}
-                    </Text>
+                    <Text>Avg: {getLegAverage(currentLegState, pid).toFixed(1)}</Text>
                 </View>
             ))}
 
@@ -101,12 +133,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                     value={inputScore}
                     onChangeText={setInputScore}
                     keyboardType="numeric"
-                    style={{
-                        borderWidth: 1,
-                        borderRadius: 8,
-                        padding: 8,
-                        marginBottom: 8,
-                    }}
+                    style={{ borderWidth: 1, borderRadius: 8, padding: 8, marginBottom: 8 }}
                 />
                 <AppButton label="Submit" onPress={handleSubmit} />
             </View>

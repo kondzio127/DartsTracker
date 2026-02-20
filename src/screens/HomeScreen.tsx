@@ -1,9 +1,10 @@
 // src/screens/HomeScreen.tsx
 import React from 'react';
-import { View, Text, Button } from 'react-native';
+import { View, Text} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useGameStore } from '../store/gameStore';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -44,23 +45,23 @@ export default function HomeScreen({ navigation }: Props) {
             <Text>Players: {players.length}</Text>
             <Text>Matches: {matches.length}</Text>
 
-            <Button
-                title="Add dummy player"
+            <AppButton
+                label="Add dummy player"
                 onPress={handleAddDummyPlayer}
             />
 
-            <Button
-                title="Start dummy match (first 2 players)"
+            <AppButton
+                label="Start dummy match (first 2 players)"
                 onPress={handleStartDummyMatch}
             />
 
-            <Button
-                title="Go to New Match"
+            <AppButton
+                label="Go to New Match"
                 onPress={() => navigation.navigate('NewMatch')}
             />
-            <Button title="Players" onPress={() => navigation.navigate('Players')} />
-            <Button title="History" onPress={() => navigation.navigate('History')} />
-            <Button title="New Game" onPress={() => navigation.navigate('NewMatch')} />
+            <AppButton label="Players" onPress={() => navigation.navigate('Players')} />
+            <AppButton label="History" onPress={() => navigation.navigate('History')} />
+            <AppButton label="New Game" onPress={() => navigation.navigate('NewMatch')} />
 
         </View>
     );

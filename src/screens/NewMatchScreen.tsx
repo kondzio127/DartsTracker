@@ -1,9 +1,10 @@
 // src/screens/NewMatchScreen.tsx
 import React, { useMemo, useState } from 'react';
-import { View, Text, Button, Pressable, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewMatch'>;
 
@@ -23,7 +24,8 @@ export default function NewMatchScreen({ navigation }: Props) {
         [players]
     );
 
-    const [gameMode, setGameMode] = useState<GameModeUI>('X01');
+    // ✅ IMPORTANT: start as null so user MUST choose a mode
+    const [gameMode, setGameMode] = useState<GameModeUI | null>(null);
     const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
 
     // X01 config
@@ -34,6 +36,7 @@ export default function NewMatchScreen({ navigation }: Props) {
     // Around the Clock config (optional)
     const [maxTarget, setMaxTarget] = useState<number>(20);
 
+    // If you want different limits by mode later, make this depend on gameMode.
     const maxSelectablePlayers = 4;
 
     const toggleSelect = (playerId: string) => {
@@ -46,16 +49,24 @@ export default function NewMatchScreen({ navigation }: Props) {
         });
     };
 
+    // ✅ Start only allowed if a mode is chosen AND players selected
     const canStart =
-        selectedPlayerIds.length >= 1 && selectedPlayerIds.length <= maxSelectablePlayers;
+        gameMode !== null &&
+        selectedPlayerIds.length >= 1 &&
+        selectedPlayerIds.length <= maxSelectablePlayers;
 
     const normalizeBestOfLegs = (n: number) => {
-        // Best-of should be odd (3,5,7...) so there’s always a majority winner.
         if (n < 1) return 1;
         return n % 2 === 0 ? n + 1 : n;
     };
 
     const onStart = () => {
+        // ✅ Hard guard
+        if (!gameMode) {
+            Alert.alert('Select game mode', 'Please choose X01 or Around the Clock first.');
+            return;
+        }
+
         if (!canStart) {
             Alert.alert('Select players', 'Pick at least 1 player (up to 4).');
             return;
@@ -74,7 +85,7 @@ export default function NewMatchScreen({ navigation }: Props) {
             return;
         }
 
-        // Around the Clock (your store supports competitive multi-player)
+        // Around the Clock
         const mt = maxTarget >= 1 ? maxTarget : 20;
         startAroundTheClock(selectedPlayerIds, mt);
         navigation.navigate('AroundTheClock');
@@ -94,21 +105,28 @@ export default function NewMatchScreen({ navigation }: Props) {
             {/* Game mode */}
             <Text style={{ fontWeight: '600' }}>Game mode</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Button
-                    title="X01"
+                <AppButton
+                    label={gameMode === 'X01' ? '✅ X01' : 'X01'}
                     onPress={() => {
                         setGameMode('X01');
                         clearSelection();
                     }}
                 />
-                <Button
-                    title="Around the Clock"
+                <AppButton
+                    label={gameMode === 'AROUND_THE_CLOCK' ? '✅ Around the Clock' : 'Around the Clock'}
                     onPress={() => {
                         setGameMode('AROUND_THE_CLOCK');
                         clearSelection();
                     }}
                 />
             </View>
+
+            {/* ✅ Helpful hint */}
+            {gameMode === null && (
+                <Text style={{ opacity: 0.7, marginTop: 6 }}>
+                    Choose a game mode to enable Start.
+                </Text>
+            )}
 
             {/* Player selection */}
             <View style={{ marginTop: 8 }}>
@@ -119,12 +137,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                 {activePlayers.length === 0 ? (
                     <View style={{ gap: 8, marginTop: 8 }}>
                         <Text>No players yet.</Text>
-
-                        {/* Change this route if your navigator uses a different name */}
-                        <Button
-                            title="Add a player"
-                            onPress={() => navigation.navigate('Players')}
-                        />
+                        <AppButton label="Add a player" onPress={() => navigation.navigate('Players')} />
                     </View>
                 ) : (
                     <View style={{ gap: 8, marginTop: 8 }}>
@@ -151,11 +164,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                             );
                         })}
 
-                        {/* Change this route if your navigator uses a different name */}
-                        <Button
-                            title="+ Add new player"
-                            onPress={() => navigation.navigate('Players')}
-                        />
+                        <AppButton label="+ Add new player" onPress={() => navigation.navigate('Players')} />
 
                         {selectedPlayerIds.length > 0 && (
                             <View style={{ marginTop: 6 }}>
@@ -173,9 +182,9 @@ export default function NewMatchScreen({ navigation }: Props) {
                 <View style={{ marginTop: 16, gap: 12 }}>
                     <Text style={{ fontWeight: '600' }}>Start score</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Button title="301" onPress={() => setStartScore(301)} />
-                        <Button title="501" onPress={() => setStartScore(501)} />
-                        <Button title="701" onPress={() => setStartScore(701)} />
+                        <AppButton label="301" onPress={() => setStartScore(301)} />
+                        <AppButton label="501" onPress={() => setStartScore(501)} />
+                        <AppButton label="701" onPress={() => setStartScore(701)} />
                     </View>
 
                     <Text style={{ opacity: 0.8 }}>Custom start score</Text>
@@ -188,8 +197,8 @@ export default function NewMatchScreen({ navigation }: Props) {
 
                     <Text style={{ fontWeight: '600' }}>Match format</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <Button title="Single leg" onPress={() => setFormatType('single')} />
-                        <Button title="Best of N legs" onPress={() => setFormatType('bestOf')} />
+                        <AppButton label="Single leg" onPress={() => setFormatType('single')} />
+                        <AppButton label="Best of N legs" onPress={() => setFormatType('bestOf')} />
                     </View>
 
                     {formatType === 'bestOf' && (
@@ -225,8 +234,9 @@ export default function NewMatchScreen({ navigation }: Props) {
             )}
 
             <View style={{ marginTop: 20, gap: 8 }}>
-                <Button title="Start" onPress={onStart} disabled={!canStart} />
-                <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
+                {/* ✅ Start disabled until mode + valid selection */}
+                <AppButton label="Start" onPress={onStart} disabled={!canStart} />
+                <AppButton label="Back to Home" onPress={() => navigation.navigate('Home')} />
             </View>
         </ScrollView>
     );

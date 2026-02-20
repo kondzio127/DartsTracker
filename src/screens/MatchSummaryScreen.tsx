@@ -1,9 +1,10 @@
 // src/screens/MatchSummaryScreen.tsx
 import React from 'react';
-import { View, Text, Button, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchSummary'>;
 
@@ -29,8 +30,8 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
                 }}
             >
                 <Text>Match not found.</Text>
-                <Button
-                    title="Back to Home"
+                <AppButton
+                    label="Back to Home"
                     onPress={() => navigation.navigate('Home')}
                 />
             </View>
@@ -104,8 +105,8 @@ export default function MatchSummaryScreen({ route, navigation }: Props) {
             </Text>
 
             <View style={{ marginTop: 24, gap: 8 }}>
-                <Button
-                    title="Back to Home"
+                <AppButton
+                    label="Back to Home"
                     onPress={() => navigation.navigate('Home')}
                 />
             </View>

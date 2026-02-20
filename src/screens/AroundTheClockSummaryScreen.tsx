@@ -1,10 +1,11 @@
 // src/screens/AroundTheClockSummaryScreen.tsx
 import React from 'react';
-import { View, Text, Button, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import { getAverageDartsPerNumber } from '../engine/aroundTheClock';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClockSummary'>;
 
@@ -24,7 +25,7 @@ export default function AroundTheClockSummaryScreen({ navigation }: Props) {
         return (
             <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
                 <Text>No practice session found.</Text>
-                <Button title="Back to Home" onPress={() => navigation.navigate('Home')} />
+                <AppButton label="Back to Home" onPress={() => navigation.navigate('Home')} />
             </View>
         );
     }
@@ -80,14 +81,14 @@ export default function AroundTheClockSummaryScreen({ navigation }: Props) {
             </View>
 
             <View style={{ marginTop: 12, gap: 8 }}>
-                <Button
-                    title="Play again (same players)"
+                <AppButton
+                    label="Play again (same players)"
                     onPress={() => {
                         startAroundTheClock(playerIds, maxTarget);
                         navigation.replace('AroundTheClock');
                     }}
                 />
-                <Button title="Back to Home" onPress={handleBackHome} />
+                <AppButton label="Back to Home" onPress={handleBackHome} />
             </View>
         </ScrollView>
     );

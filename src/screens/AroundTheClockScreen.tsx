@@ -1,10 +1,11 @@
 // src/screens/AroundTheClockScreen.tsx
 import React, { useEffect } from 'react';
-import { View, Text, Button } from 'react-native';
+import { View, Text } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import { getAverageDartsPerNumber } from '../engine/aroundTheClock';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClock'>;
 
@@ -32,7 +33,7 @@ export default function AroundTheClockScreen({ navigation }: Props) {
         return (
             <View style={{ flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center' }}>
                 <Text>No active practice session.</Text>
-                <Button title="Back to New Game" onPress={() => navigation.navigate('NewMatch')} />
+                <AppButton label="Back to New Game" onPress={() => navigation.navigate('NewMatch')} />
             </View>
         );
     }
@@ -66,8 +67,8 @@ export default function AroundTheClockScreen({ navigation }: Props) {
             <Text>Your avg darts per number: {avgDarts}</Text>
 
             <View style={{ marginTop: 8, gap: 8 }}>
-                <Button title="Hit" onPress={() => registerAroundTheClockDart(true)} />
-                <Button title="Miss" onPress={() => registerAroundTheClockDart(false)} />
+                <AppButton label="Hit" onPress={() => registerAroundTheClockDart(true)} />
+                <AppButton label="Miss" onPress={() => registerAroundTheClockDart(false)} />
             </View>
 
             <View style={{ marginTop: 16 }}>

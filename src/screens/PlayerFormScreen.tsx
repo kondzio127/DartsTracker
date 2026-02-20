@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, Button, Alert } from 'react-native';
+import { View, Text, TextInput, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PlayerForm'>;
 
@@ -74,7 +75,7 @@ export default function PlayerFormScreen({ route, navigation }: Props) {
                 style={{ borderWidth: 1, borderRadius: 8, padding: 10 }}
             />
 
-            <Button title="Save" onPress={onSave} />
+            <AppButton label="Save" onPress={onSave} />
         </View>
     );
 }

@@ -1,10 +1,11 @@
 // src/screens/ScoreboardScreen.tsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, Alert } from 'react-native';
+import { View, Text, TextInput, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import { getLegAverage } from '../engine/x01';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scoreboard'>;
 
@@ -42,8 +43,8 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 }}
             >
                 <Text>No active match.</Text>
-                <Button
-                    title="Back to Home"
+                <AppButton
+                    label="Back to Home"
                     onPress={() => navigation.navigate('Home')}
                 />
             </View>
@@ -107,7 +108,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                         marginBottom: 8,
                     }}
                 />
-                <Button title="Submit" onPress={handleSubmit} />
+                <AppButton label="Submit" onPress={handleSubmit} />
             </View>
         </View>
     );

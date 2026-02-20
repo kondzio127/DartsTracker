@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Button, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
+import AppButton from "../components/AppButton";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Players'>;
 
@@ -18,7 +19,7 @@ export default function PlayersScreen({ navigation }: Props) {
         <View style={{ flex: 1, padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>Players</Text>
 
-            <Button title="Add player" onPress={() => navigation.navigate('PlayerForm')} />
+            <AppButton label="Add player" onPress={() => navigation.navigate('PlayerForm')} />
 
             <FlatList
                 data={visiblePlayers}

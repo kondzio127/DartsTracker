@@ -136,6 +136,26 @@ export default function ScoreboardScreen({ navigation }: Props) {
                     style={{ borderWidth: 1, borderRadius: 8, padding: 8, marginBottom: 8 }}
                 />
                 <AppButton label="Submit" onPress={handleSubmit} />
+
+                {__DEV__ && (
+                    <View style={{ marginTop: 12 }}>
+                        <AppButton
+                            label="DEV: Minimise (go Home, keep match)"
+                            variant="secondary"
+                            onPress={() => {
+                                // allow leaving without triggering the Exit confirmation
+                                allowRemoveRef.current = true;
+                                navigation.navigate('Home');
+
+                                // reset flag immediately so future attempts still prompt
+                                setTimeout(() => {
+                                    allowRemoveRef.current = false;
+                                }, 0);
+                            }}
+                        />
+                    </View>
+                )}
+
             </View>
         </View>
     );

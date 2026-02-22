@@ -22,8 +22,12 @@ export function getMatchWinnerId(match: Match): string | undefined {
 export function getPlayerMatchAverage(match: Match, playerId: string): number {
     const visits = match.legs.flatMap(l => l.visits).filter(v => v.playerId === playerId);
     if (visits.length === 0) return 0;
-    const total = visits.reduce((s, v) => s + v.totalScore, 0);
-    return (total / visits.length); // visits are treated as 3 darts
+
+    const total = visits.reduce((s, v) => s + (v.totalScore ?? 0), 0);
+    const darts = visits.reduce((s, v) => s + (Array.isArray(v.scores) ? v.scores.length : 3), 0);
+
+    if (darts === 0) return 0;
+    return (total / darts) * 3; // true 3-dart average
 }
 
 // Checkout opportunities: remaining BEFORE visit <= 170

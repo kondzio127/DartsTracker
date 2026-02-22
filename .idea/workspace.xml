@@ -6,7 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add exit confirmation logic for active match and practice sessions, improve navigation safety with state resets and gesture blocking">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/engine/x01.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/engine/x01.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/stats.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -29,18 +33,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "kondzio127"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;kondzio127&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/kondzio127/DartsTracker.git",
-    "accountId": "d3798bbe-1184-4341-ab8f-5e1a59405138"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/kondzio127/DartsTracker.git&quot;,
+    &quot;accountId&quot;: &quot;d3798bbe-1184-4341-ab8f-5e1a59405138&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/node_modules/react-native/Libraries/Components/Button.d.ts" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/node_modules/typescript/lib/lib.es2015.core.d.ts" root0="FORCE_HIGHLIGHTING" />
@@ -61,27 +65,27 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "git-widget-placeholder": "main",
-    "javascript.preferred.runtime.type.id": "node",
-    "last_opened_file_path": "C:/Users/konra/Projects/darts-tracker",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.gitlab.GitLabSettingsConfigurable",
-    "ts.external.directory.path": "C:\\Users\\konra\\Projects\\darts-tracker\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;javascript.preferred.runtime.type.id&quot;: &quot;node&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/konra/Projects/darts-tracker&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.gitlab.GitLabSettingsConfigurable&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\konra\\Projects\\darts-tracker\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Users\konra\Projects\darts-tracker\src\navigation" />
@@ -105,6 +109,7 @@
       <workItem from="1771453050728" duration="10000" />
       <workItem from="1771453069030" duration="10000" />
       <workItem from="1771453080735" duration="28860000" />
+      <workItem from="1771789520932" duration="5523000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />

@@ -1,5 +1,7 @@
 // src/types/domain.ts
 
+export type DartMultiplier = 1 | 2 | 3;
+
 export type GameMode = 'X01' | 'AROUND_THE_CLOCK';
 
 export interface Player {
@@ -10,7 +12,6 @@ export interface Player {
     isHidden?: boolean;  // soft-delete / hide from selection
     createdAt: string;
 }
-
 
 export interface Match {
     id: string;
@@ -60,5 +61,3 @@ export interface AroundTheClockSession {
     dartsThrown: number;
     bestStreak: number;
 }
-
-

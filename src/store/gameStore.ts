@@ -86,7 +86,7 @@ export const useGameStore = create<GameState>()(
             aroundTheClockStartedAt: undefined,
             aroundTheClockWinnerPlayerId: undefined,
 
-            addPlayer: (name, nickname, flag) => {
+            addPlayer: (name: string, nickname?: string, flag?: string) => {
                 const newPlayer: Player = {
                     id: uuid(),
                     name,

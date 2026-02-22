@@ -1,5 +1,6 @@
 // src/types/domain.ts
 
+// Dart multipliers used throughout the scoring UI
 export type DartMultiplier = 1 | 2 | 3;
 
 export type GameMode = 'X01' | 'AROUND_THE_CLOCK';
@@ -8,31 +9,41 @@ export interface Player {
     id: string;
     name: string;
     nickname?: string;
-    flag?: string;       // just a string for now e.g. "UK" or "BG"
-    isHidden?: boolean;  // soft-delete / hide from selection
+
+    /**
+     * We store the player's "flag" as an ISO-3166 alpha-2 code.
+     * Examples:
+     *  - "GB" (United Kingdom)
+     *  - "BG" (Bulgaria)
+     *
+     * Why store the code instead of an emoji?
+     * - The code is stable and searchable.
+     * - We can always render the emoji on screen from the code.
+     */
+    flag?: string;
+
+    isHidden?: boolean;
     createdAt: string;
 }
 
 export interface Match {
     id: string;
     mode: GameMode;
-    startScore: number;          // 301, 501, 701 etc.
-    bestOfLegs?: number;         // e.g. best of 3, 5, 7
-    bestOfSets?: number;         // future, unused for now
+    startScore: number;
+    bestOfLegs?: number;
+    bestOfSets?: number;
     createdAt: string;
     finishedAt?: string;
 
-    playerIds: string[];         // IDs in throwing order
+    playerIds: string[];
     legs: Leg[];
-
-    // number of legs each player has won in this match
     legWinsByPlayer?: Record<string, number>;
 }
 
 export interface Leg {
     id: string;
     matchId: string;
-    sequence: number;        // leg number in match: 1, 2, 3, ...
+    sequence: number;
     startingPlayerId: string;
     winnerPlayerId?: string;
     visits: Visit[];
@@ -50,10 +61,8 @@ export interface Visit {
     createdAt: string;
 }
 
-// Simple record of an Around the Clock practice session
 export interface AroundTheClockSession {
     id: string;
-    // we’ll link to Player later – for now we can leave this optional
     playerId?: string;
     createdAt: string;
     finishedAt: string;

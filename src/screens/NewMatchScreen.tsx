@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
 import AppButton from "../components/AppButton";
+import { getFlagEmoji, getCountryName } from '../utils/flags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewMatch'>;
 
@@ -24,32 +25,25 @@ export default function NewMatchScreen({ navigation }: Props) {
         [players]
     );
 
-    // ✅ IMPORTANT: start as null so user MUST choose a mode
     const [gameMode, setGameMode] = useState<GameModeUI | null>(null);
     const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
 
-    // X01 config
     const [startScore, setStartScore] = useState<number>(501);
     const [formatType, setFormatType] = useState<FormatType>('single');
     const [bestOfLegs, setBestOfLegs] = useState<number>(3);
 
-    // Around the Clock config (optional)
     const [maxTarget, setMaxTarget] = useState<number>(20);
 
-    // If you want different limits by mode later, make this depend on gameMode.
     const maxSelectablePlayers = 4;
 
     const toggleSelect = (playerId: string) => {
         setSelectedPlayerIds(prev => {
-            if (prev.includes(playerId)) {
-                return prev.filter(id => id !== playerId);
-            }
+            if (prev.includes(playerId)) return prev.filter(id => id !== playerId);
             if (prev.length >= maxSelectablePlayers) return prev;
             return [...prev, playerId];
         });
     };
 
-    // ✅ Start only allowed if a mode is chosen AND players selected
     const canStart =
         gameMode !== null &&
         selectedPlayerIds.length >= 1 &&
@@ -61,12 +55,10 @@ export default function NewMatchScreen({ navigation }: Props) {
     };
 
     const onStart = () => {
-        // ✅ Hard guard
         if (!gameMode) {
             Alert.alert('Select game mode', 'Please choose X01 or Around the Clock first.');
             return;
         }
-
         if (!canStart) {
             Alert.alert('Select players', 'Pick at least 1 player (up to 4).');
             return;
@@ -85,7 +77,6 @@ export default function NewMatchScreen({ navigation }: Props) {
             return;
         }
 
-        // Around the Clock
         const mt = maxTarget >= 1 ? maxTarget : 20;
         startAroundTheClock(selectedPlayerIds, mt);
         navigation.navigate('AroundTheClock');
@@ -95,14 +86,22 @@ export default function NewMatchScreen({ navigation }: Props) {
 
     const playerLabel = (id: string) => {
         const p = players.find(x => x.id === id);
-        return p ? `${p.name}${p.nickname ? ` (${p.nickname})` : ''}` : id;
+        if (!p) return id;
+        const emoji = p.flag ? getFlagEmoji(p.flag) : '';
+        return `${emoji ? emoji + ' ' : ''}${p.name}${p.nickname ? ` (${p.nickname})` : ''}`;
+    };
+
+    const flagLine = (code?: string) => {
+        if (!code) return '—';
+        const emoji = getFlagEmoji(code);
+        const name = getCountryName(code) ?? code;
+        return `${emoji} ${name}`;
     };
 
     return (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>New Game</Text>
 
-            {/* Game mode */}
             <Text style={{ fontWeight: '600' }}>Game mode</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
                 <AppButton
@@ -121,14 +120,12 @@ export default function NewMatchScreen({ navigation }: Props) {
                 />
             </View>
 
-            {/* ✅ Helpful hint */}
             {gameMode === null && (
                 <Text style={{ opacity: 0.7, marginTop: 6 }}>
                     Choose a game mode to enable Start.
                 </Text>
             )}
 
-            {/* Player selection */}
             <View style={{ marginTop: 8 }}>
                 <Text style={{ fontWeight: '600' }}>
                     Select players (up to {maxSelectablePlayers})
@@ -143,6 +140,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                     <View style={{ gap: 8, marginTop: 8 }}>
                         {activePlayers.map(p => {
                             const selected = selectedPlayerIds.includes(p.id);
+                            const emoji = p.flag ? getFlagEmoji(p.flag) : '';
                             return (
                                 <Pressable
                                     key={p.id}
@@ -155,10 +153,12 @@ export default function NewMatchScreen({ navigation }: Props) {
                                     }}
                                 >
                                     <Text style={{ fontWeight: '700' }}>
-                                        {selected ? '✅ ' : ''}{p.name}{p.nickname ? ` (${p.nickname})` : ''}
+                                        {selected ? '✅ ' : ''}
+                                        {emoji ? `${emoji} ` : ''}
+                                        {p.name}{p.nickname ? ` (${p.nickname})` : ''}
                                     </Text>
                                     <Text style={{ opacity: 0.8 }}>
-                                        {p.flag ? `Flag: ${p.flag}` : 'Flag: —'}
+                                        {p.flag ? `Flag: ${flagLine(p.flag)}` : 'Flag: —'}
                                     </Text>
                                 </Pressable>
                             );
@@ -177,7 +177,6 @@ export default function NewMatchScreen({ navigation }: Props) {
                 )}
             </View>
 
-            {/* X01 settings */}
             {gameMode === 'X01' && (
                 <View style={{ marginTop: 16, gap: 12 }}>
                     <Text style={{ fontWeight: '600' }}>Start score</Text>
@@ -219,7 +218,6 @@ export default function NewMatchScreen({ navigation }: Props) {
                 </View>
             )}
 
-            {/* Around the Clock settings */}
             {gameMode === 'AROUND_THE_CLOCK' && (
                 <View style={{ marginTop: 16, gap: 8 }}>
                     <Text style={{ fontWeight: '600' }}>Around the Clock settings</Text>
@@ -234,7 +232,6 @@ export default function NewMatchScreen({ navigation }: Props) {
             )}
 
             <View style={{ marginTop: 20, gap: 8 }}>
-                {/* ✅ Start disabled until mode + valid selection */}
                 <AppButton label="Start" onPress={onStart} disabled={!canStart} />
                 <AppButton label="Back to Home" onPress={() => navigation.navigate('Home')} />
             </View>

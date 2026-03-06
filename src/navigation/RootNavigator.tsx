@@ -11,6 +11,7 @@ import AroundTheClockScreen from '../screens/AroundTheClockScreen';
 import AroundTheClockSummaryScreen from '../screens/AroundTheClockSummaryScreen';
 import PlayersScreen from '../screens/PlayersScreen';
 import PlayerFormScreen from '../screens/PlayerFormScreen';
+import PlayerStatsScreen from '../screens/PlayerStatsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import LegDetailScreen from '../screens/LegDetailScreen';
@@ -25,6 +26,7 @@ export type RootStackParamList = {
 
     Players: undefined;
     PlayerForm: { playerId?: string } | undefined;
+    PlayerStats: { playerId: string };
 
     History: undefined;
     MatchDetail: { matchId: string };
@@ -37,22 +39,20 @@ export default function RootNavigator() {
     return (
         <NavigationContainer>
             <Stack.Navigator initialRouteName="Home">
-                {/* Home: no header */}
                 <Stack.Screen
                     name="Home"
                     component={HomeScreen}
                     options={{ headerShown: false }}
                 />
 
-                {/* Normal drill-in screens: back is appropriate */}
                 <Stack.Screen name="NewMatch" component={NewMatchScreen} options={{ title: 'New Game' }} />
                 <Stack.Screen name="Players" component={PlayersScreen} options={{ title: 'Players' }} />
                 <Stack.Screen name="PlayerForm" component={PlayerFormScreen} options={{ title: 'Player' }} />
+                <Stack.Screen name="PlayerStats" component={PlayerStatsScreen} options={{ title: 'Player Stats' }} />
                 <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
                 <Stack.Screen name="MatchDetail" component={MatchDetailScreen} options={{ title: 'Match' }} />
                 <Stack.Screen name="LegDetail" component={LegDetailScreen} options={{ title: 'Leg' }} />
 
-                {/* Stateful/terminal screens: hide back arrow + disable swipe-back */}
                 <Stack.Screen
                     name="Scoreboard"
                     component={ScoreboardScreen}

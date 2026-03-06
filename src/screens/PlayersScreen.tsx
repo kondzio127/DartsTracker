@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -8,11 +8,15 @@ import { getFlagEmoji, getCountryName } from '../utils/flags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Players'>;
 
+const TEXT = '#111111';
+const MUTED = '#6B7280';
+const BORDER = '#E5E7EB';
+const BLUE = '#0A84FF';
+
 export default function PlayersScreen({ navigation }: Props) {
     const players = useGameStore(s => s.players);
     const togglePlayerHidden = useGameStore(s => s.togglePlayerHidden);
 
-    // Sort alphabetically for nicer UX
     const visiblePlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
 
     const flagLine = (code?: string) => {
@@ -24,7 +28,7 @@ export default function PlayersScreen({ navigation }: Props) {
 
     return (
         <View style={{ flex: 1, padding: 16, gap: 12 }}>
-            <Text style={{ fontSize: 20, fontWeight: '600' }}>Players</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: TEXT }}>Players</Text>
 
             <AppButton label="Add player" onPress={() => navigation.navigate('PlayerForm')} />
 
@@ -33,35 +37,92 @@ export default function PlayersScreen({ navigation }: Props) {
                 keyExtractor={(p) => p.id}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 renderItem={({ item }) => (
-                    <View style={{ borderWidth: 1, borderRadius: 10, padding: 12, gap: 8 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700' }}>
-                            {/* Emoji flag next to name (if set) */}
+                    <Pressable
+                        onPress={() => navigation.navigate('PlayerStats', { playerId: item.id })}
+                        style={({ pressed }) => [
+                            styles.card,
+                            pressed && { opacity: 0.92 },
+                        ]}
+                    >
+                        <Text style={styles.name}>
                             {item.flag ? `${getFlagEmoji(item.flag)} ` : ''}
                             {item.name} {item.nickname ? `(${item.nickname})` : ''}
                         </Text>
 
-                        <Text style={{ opacity: 0.8 }}>
+                        <Text style={styles.meta}>
                             Flag: {flagLine(item.flag)} | Status: {item.isHidden ? 'Hidden' : 'Active'}
                         </Text>
 
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <View style={styles.actions}>
+                            <Pressable
+                                onPress={() => navigation.navigate('PlayerStats', { playerId: item.id })}
+                                style={({ pressed }) => [styles.button, styles.blueButton, pressed && { opacity: 0.9 }]}
+                            >
+                                <Text style={styles.blueButtonText}>Stats</Text>
+                            </Pressable>
+
                             <Pressable
                                 onPress={() => navigation.navigate('PlayerForm', { playerId: item.id })}
-                                style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 8 }}
+                                style={({ pressed }) => [styles.button, pressed && { opacity: 0.9 }]}
                             >
-                                <Text>Edit</Text>
+                                <Text style={styles.buttonText}>Edit</Text>
                             </Pressable>
 
                             <Pressable
                                 onPress={() => togglePlayerHidden(item.id)}
-                                style={{ paddingVertical: 8, paddingHorizontal: 12, borderWidth: 1, borderRadius: 8 }}
+                                style={({ pressed }) => [styles.button, pressed && { opacity: 0.9 }]}
                             >
-                                <Text>{item.isHidden ? 'Unhide' : 'Hide'}</Text>
+                                <Text style={styles.buttonText}>{item.isHidden ? 'Unhide' : 'Hide'}</Text>
                             </Pressable>
                         </View>
-                    </View>
+                    </Pressable>
                 )}
             />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    card: {
+        borderWidth: 1,
+        borderColor: BORDER,
+        borderRadius: 12,
+        padding: 12,
+        gap: 8,
+        backgroundColor: '#fff',
+    },
+    name: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: TEXT,
+    },
+    meta: {
+        opacity: 0.8,
+        color: MUTED,
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 10,
+        flexWrap: 'wrap',
+    },
+    button: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: BORDER,
+        borderRadius: 999,
+        backgroundColor: '#fff',
+    },
+    buttonText: {
+        color: TEXT,
+        fontWeight: '700',
+    },
+    blueButton: {
+        borderColor: BLUE,
+        backgroundColor: BLUE,
+    },
+    blueButtonText: {
+        color: '#fff',
+        fontWeight: '800',
+    },
+});

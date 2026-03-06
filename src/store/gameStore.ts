@@ -22,7 +22,6 @@ import {
 const uuid = () => Math.random().toString(36).slice(2);
 const DARTS_PER_TURN = 3;
 
-// ---------- Undo helpers (works for both new + old saved matches) ----------
 function inferRemainingBefore(v: any): number {
     if (typeof v?.remainingBefore === 'number') return v.remainingBefore;
     const total = typeof v?.totalScore === 'number' ? v.totalScore : 0;
@@ -30,20 +29,44 @@ function inferRemainingBefore(v: any): number {
     return v?.isBust ? after : after + total;
 }
 
+function inferDartFromScore(score: number) {
+    if (score === 50) return { segment: 25, multiplier: 2 as const, score: 50 };
+    if (score === 25) return { segment: 25, multiplier: 1 as const, score: 25 };
+    if (score === 0) return { segment: 0, multiplier: 1 as const, score: 0 };
+
+    if (score % 3 === 0) {
+        const seg = score / 3;
+        if (seg >= 1 && seg <= 20) return { segment: seg, multiplier: 3 as const, score };
+    }
+    if (score % 2 === 0) {
+        const seg = score / 2;
+        if (seg >= 1 && seg <= 20) return { segment: seg, multiplier: 2 as const, score };
+    }
+    if (score >= 1 && score <= 20) return { segment: score, multiplier: 1 as const, score };
+
+    return { segment: 0, multiplier: 1 as const, score: 0 };
+}
+
 interface GameState {
     players: Player[];
     matches: Match[];
 
-    updatePlayer: (playerId: string, updates: Partial<Omit<Player, 'id' | 'createdAt'>>) => void;
-    togglePlayerHidden: (playerId: string) => void;
-
     currentMatch?: Match;
     currentLegState?: X01LegState;
     currentLegId?: string;
-
     currentLegWins: Record<string, number>;
 
+    aroundTheClockStatesByPlayer: Record<string, AroundTheClockState>;
+    aroundTheClockSessions: AroundTheClockSession[];
+    aroundTheClockPlayerIds: string[];
+    aroundTheClockCurrentPlayerIndex: number;
+    aroundTheClockDartInTurn: number;
+    aroundTheClockStartedAt?: string;
+    aroundTheClockWinnerPlayerId?: string;
+
     addPlayer: (name: string, nickname?: string, flag?: string) => Player;
+    updatePlayer: (playerId: string, updates: Partial<Omit<Player, 'id' | 'createdAt'>>) => void;
+    togglePlayerHidden: (playerId: string) => void;
 
     startMatch: (config: { playerIds: string[]; startScore: number; bestOfLegs?: number }) => void;
     abandonMatch: () => void;
@@ -53,14 +76,6 @@ interface GameState {
     endTurn: () => void;
 
     finishLegIfNeeded: () => { matchFinished: boolean; matchId?: string };
-
-    aroundTheClockStatesByPlayer: Record<string, AroundTheClockState>;
-    aroundTheClockSessions: AroundTheClockSession[];
-    aroundTheClockPlayerIds: string[];
-    aroundTheClockCurrentPlayerIndex: number;
-    aroundTheClockDartInTurn: number;
-    aroundTheClockStartedAt?: string;
-    aroundTheClockWinnerPlayerId?: string;
 
     startAroundTheClock: (playerIds: string[], maxTarget?: number) => void;
     registerAroundTheClockDart: (hit: boolean) => void;
@@ -86,7 +101,7 @@ export const useGameStore = create<GameState>()(
             aroundTheClockStartedAt: undefined,
             aroundTheClockWinnerPlayerId: undefined,
 
-            addPlayer: (name: string, nickname?: string, flag?: string) => {
+            addPlayer: (name, nickname, flag) => {
                 const newPlayer: Player = {
                     id: uuid(),
                     name,
@@ -99,15 +114,28 @@ export const useGameStore = create<GameState>()(
                 return newPlayer;
             },
 
+            updatePlayer: (playerId, updates) => {
+                set(state => ({
+                    players: state.players.map(p => (p.id === playerId ? { ...p, ...updates } : p)),
+                }));
+            },
+
+            togglePlayerHidden: (playerId) => {
+                set(state => ({
+                    players: state.players.map(p => (p.id === playerId ? { ...p, isHidden: !p.isHidden } : p)),
+                }));
+            },
+
             startMatch: ({ playerIds, startScore, bestOfLegs }) => {
                 const { matches } = get();
-
                 const matchId = uuid();
                 const legId = uuid();
                 const normalizedBestOfLegs = bestOfLegs ?? 1;
 
                 const initialLegWins: Record<string, number> = {};
-                playerIds.forEach(pid => (initialLegWins[pid] = 0));
+                playerIds.forEach(pid => {
+                    initialLegWins[pid] = 0;
+                });
 
                 const newMatch: Match = {
                     id: matchId,
@@ -120,12 +148,10 @@ export const useGameStore = create<GameState>()(
                     legWinsByPlayer: initialLegWins,
                 };
 
-                const initialLegState = createInitialLegState(playerIds, startScore);
-
                 set({
                     matches: [...matches, newMatch],
                     currentMatch: newMatch,
-                    currentLegState: initialLegState,
+                    currentLegState: createInitialLegState(playerIds, startScore),
                     currentLegId: legId,
                     currentLegWins: initialLegWins,
                 });
@@ -140,31 +166,34 @@ export const useGameStore = create<GameState>()(
                 });
             },
 
-            // Adds a dart to the current turn ONLY (does not advance player)
             addDart: (segment, multiplier) => {
                 const { currentLegState, currentMatch, currentLegId } = get();
                 if (!currentLegState || !currentMatch || !currentLegId) return;
 
-                // Prevent triple bull at the store level too (defensive)
+                // block impossible triple bull
                 if (segment === 25 && multiplier === 3) return;
 
-                // Hard cap: 3 darts max until Next pressed
+                // ignore if turn is already locked/full
                 if (currentLegState.turnDarts.length >= 3) return;
+                if (currentLegState.turnStatus !== 'IN_PROGRESS') return;
 
-                const dart = createDartThrow(segment, multiplier);
-                const updated = applyDart(currentLegState, dart);
+                // IMPORTANT:
+                // applyDart returns a plain X01LegState in your current engine
+                const updated = applyDart(
+                    currentLegState,
+                    createDartThrow(segment, multiplier)
+                );
 
-                // If checkout happens, auto-commit immediately so the leg/match can finish without pressing Next.
+                // CASE 1: checkout -> commit immediately
                 if (updated.turnStatus === 'CHECKOUT') {
                     const { legState: committedState, committedVisit } = commitTurn(updated);
 
-                    // Fix legId in the committed visit (engine uses a temp id)
                     let fixedState = committedState;
                     if (committedVisit) {
-                        const fixed = { ...committedVisit, legId: currentLegId };
+                        const fixedVisit = { ...committedVisit, legId: currentLegId };
                         fixedState = {
                             ...committedState,
-                            visits: [...committedState.visits.slice(0, -1), fixed],
+                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
                         };
                     }
 
@@ -172,77 +201,97 @@ export const useGameStore = create<GameState>()(
                     return;
                 }
 
+                // CASE 2: bust -> commit immediately
+                if (updated.turnStatus === 'BUST') {
+                    const { legState: committedState, committedVisit } = commitTurn(updated);
+
+                    let fixedState = committedState;
+                    if (committedVisit) {
+                        const fixedVisit = { ...committedVisit, legId: currentLegId };
+                        fixedState = {
+                            ...committedState,
+                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
+                        };
+                    }
+
+                    set({ currentLegState: fixedState });
+                    return;
+                }
+
+                // CASE 3: third dart entered -> commit immediately
+                if (updated.turnDarts.length === 3) {
+                    const { legState: committedState, committedVisit } = commitTurn(updated);
+
+                    let fixedState = committedState;
+                    if (committedVisit) {
+                        const fixedVisit = { ...committedVisit, legId: currentLegId };
+                        fixedState = {
+                            ...committedState,
+                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
+                        };
+                    }
+
+                    set({ currentLegState: fixedState });
+                    return;
+                }
+
+                // Otherwise keep partial turn editable
                 set({ currentLegState: updated });
             },
 
-            // Smart undo:
-            // - mid-turn -> removes last dart
-            // - next player's turn (no darts yet) -> pulls back previous committed visit into editable darts
             undoDart: () => {
                 const { currentLegState } = get();
                 if (!currentLegState) return;
 
-                // Undo within current turn
                 if (currentLegState.turnDarts.length > 0) {
                     set({ currentLegState: undoLastDart(currentLegState) });
                     return;
                 }
 
-                // Pull back last committed turn
                 if (!currentLegState.visits || currentLegState.visits.length === 0) return;
 
                 const lastVisit: any = currentLegState.visits[currentLegState.visits.length - 1];
                 const remainingBefore = inferRemainingBefore(lastVisit);
 
-                // Build dart throws from visit meta if present; else fallback to scores
-                const dartsFromVisit = Array.isArray(lastVisit?.segments) && Array.isArray(lastVisit?.multipliers)
-                    ? (lastVisit.scores ?? []).map((s: number, i: number) =>
-                        createDartThrow(lastVisit.segments[i] ?? 0, (lastVisit.multipliers[i] ?? 1) as 1 | 2 | 3)
-                    )
-                    : (lastVisit.scores ?? []).map((s: number) => {
-                        // fallback (best-effort)
-                        if (s === 50) return createDartThrow(25, 2);
-                        if (s === 25) return createDartThrow(25, 1);
-                        if (s === 0) return createDartThrow(0, 1);
-                        if (s % 3 === 0 && s / 3 >= 1 && s / 3 <= 20) return createDartThrow(s / 3, 3);
-                        if (s % 2 === 0 && s / 2 >= 1 && s / 2 <= 20) return createDartThrow(s / 2, 2);
-                        if (s >= 1 && s <= 20) return createDartThrow(s, 1);
-                        return createDartThrow(0, 1);
-                    });
+                const restoredTurnDarts =
+                    Array.isArray(lastVisit?.segments) && Array.isArray(lastVisit?.multipliers)
+                        ? (lastVisit.scores ?? []).map((s: number, i: number) => ({
+                            segment: lastVisit.segments[i] ?? 0,
+                            multiplier: (lastVisit.multipliers[i] ?? 1) as 1 | 2 | 3,
+                            score: s ?? 0,
+                        }))
+                        : (lastVisit.scores ?? []).map((s: number) => inferDartFromScore(s ?? 0));
 
-                // Reset state to start of that turn, then re-apply darts to compute live remaining + status
-                let tmp: X01LegState = {
+                const restoredRemaining = lastVisit.isBust ? remainingBefore : lastVisit.remainingAfter;
+
+                const newLegState: X01LegState = {
                     ...currentLegState,
                     visits: currentLegState.visits.slice(0, -1),
                     currentPlayerId: lastVisit.playerId,
                     winnerPlayerId: undefined,
                     turnStartRemaining: remainingBefore,
-                    turnDarts: [],
-                    turnStatus: 'IN_PROGRESS',
-                    scoresByPlayer: { ...currentLegState.scoresByPlayer, [lastVisit.playerId]: remainingBefore },
+                    turnDarts: restoredTurnDarts,
+                    scoresByPlayer: {
+                        ...currentLegState.scoresByPlayer,
+                        [lastVisit.playerId]: restoredRemaining,
+                    },
                 };
 
-                for (const d of dartsFromVisit) {
-                    tmp = applyDart(tmp, d);
-                }
-
-                set({ currentLegState: tmp });
+                set({ currentLegState: newLegState });
             },
 
-            // Next button: pads missing darts (as misses) and commits the turn + advances player
             endTurn: () => {
                 const { currentLegState, currentLegId } = get();
                 if (!currentLegState || !currentLegId) return;
 
                 const { legState: updatedLegState, committedVisit } = engineEndTurn(currentLegState);
 
-                // fix legId in the committed visit
                 let newLegState: X01LegState = updatedLegState;
                 if (committedVisit) {
-                    const fixed = { ...committedVisit, legId: currentLegId };
+                    const fixedVisit = { ...committedVisit, legId: currentLegId };
                     newLegState = {
                         ...updatedLegState,
-                        visits: [...updatedLegState.visits.slice(0, -1), fixed],
+                        visits: [...updatedLegState.visits.slice(0, -1), fixedVisit],
                     };
                 }
 
@@ -264,19 +313,23 @@ export const useGameStore = create<GameState>()(
                 };
 
                 const updatedLegs = [...currentMatch.legs, completedLeg];
-
                 const legWins: Record<string, number> = {};
-                currentMatch.playerIds.forEach(pid => (legWins[pid] = 0));
+                currentMatch.playerIds.forEach(pid => {
+                    legWins[pid] = 0;
+                });
                 for (const leg of updatedLegs) {
                     if (leg.winnerPlayerId) legWins[leg.winnerPlayerId] = (legWins[leg.winnerPlayerId] ?? 0) + 1;
                 }
 
-                const updatedMatch: Match = { ...currentMatch, legs: updatedLegs, legWinsByPlayer: legWins };
+                const updatedMatch: Match = {
+                    ...currentMatch,
+                    legs: updatedLegs,
+                    legWinsByPlayer: legWins,
+                };
                 const otherMatches = matches.filter(m => m.id !== currentMatch.id);
 
                 const bestOf = updatedMatch.bestOfLegs ?? 1;
                 const legsToWin = Math.floor(bestOf / 2) + 1;
-
                 const matchFinished = updatedMatch.playerIds.some(pid => (legWins[pid] ?? 0) >= legsToWin);
 
                 if (matchFinished) {
@@ -291,7 +344,6 @@ export const useGameStore = create<GameState>()(
                     return { matchFinished: true, matchId: finishedMatch.id };
                 }
 
-                // Start next leg (alternate starter by rotating order)
                 const legsPlayed = updatedMatch.legs.length;
                 const baseOrder = updatedMatch.playerIds;
                 const startIndex = legsPlayed % baseOrder.length;
@@ -311,7 +363,6 @@ export const useGameStore = create<GameState>()(
                 return { matchFinished: false, matchId: updatedMatch.id };
             },
 
-            // ---------- AROUND THE CLOCK ----------
             startAroundTheClock: (playerIds, maxTarget = 20) => {
                 const states: Record<string, AroundTheClockState> = {};
                 for (const pid of playerIds) states[pid] = createInitialAroundTheClockState(maxTarget);
@@ -326,7 +377,7 @@ export const useGameStore = create<GameState>()(
                 });
             },
 
-            registerAroundTheClockDart: (hit) => {
+            registerAroundTheClockDart: hit => {
                 const {
                     aroundTheClockStatesByPlayer,
                     aroundTheClockPlayerIds,
@@ -349,7 +400,6 @@ export const useGameStore = create<GameState>()(
                 if (updatedPlayerState.isFinished) {
                     const totalDarts = Object.values(nextStates).reduce((sum, s) => sum + (s?.dartsThrown ?? 0), 0);
                     const bestStreakOverall = Math.max(...Object.values(nextStates).map(s => s?.bestStreak ?? 0), 0);
-
                     const finishedAt = new Date().toISOString();
                     const createdAt = get().aroundTheClockStartedAt ?? finishedAt;
 
@@ -374,9 +424,16 @@ export const useGameStore = create<GameState>()(
                 const nextDartInTurn = aroundTheClockDartInTurn + 1;
                 if (nextDartInTurn >= DARTS_PER_TURN) {
                     const nextIndex = (aroundTheClockCurrentPlayerIndex + 1) % aroundTheClockPlayerIds.length;
-                    set({ aroundTheClockStatesByPlayer: nextStates, aroundTheClockCurrentPlayerIndex: nextIndex, aroundTheClockDartInTurn: 0 });
+                    set({
+                        aroundTheClockStatesByPlayer: nextStates,
+                        aroundTheClockCurrentPlayerIndex: nextIndex,
+                        aroundTheClockDartInTurn: 0,
+                    });
                 } else {
-                    set({ aroundTheClockStatesByPlayer: nextStates, aroundTheClockDartInTurn: nextDartInTurn });
+                    set({
+                        aroundTheClockStatesByPlayer: nextStates,
+                        aroundTheClockDartInTurn: nextDartInTurn,
+                    });
                 }
             },
 
@@ -390,20 +447,12 @@ export const useGameStore = create<GameState>()(
                     aroundTheClockWinnerPlayerId: undefined,
                 });
             },
-
-            updatePlayer: (playerId, updates) => {
-                set(state => ({ players: state.players.map(p => (p.id === playerId ? { ...p, ...updates } : p)) }));
-            },
-
-            togglePlayerHidden: (playerId) => {
-                set(state => ({ players: state.players.map(p => (p.id === playerId ? { ...p, isHidden: !p.isHidden } : p)) }));
-            },
         }),
         {
             name: 'darts-tracker-store-v1',
             version: 1,
             storage: createJSONStorage(() => AsyncStorage),
-            partialize: (state) => ({
+            partialize: state => ({
                 players: state.players,
                 matches: state.matches,
                 aroundTheClockSessions: state.aroundTheClockSessions,

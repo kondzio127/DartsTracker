@@ -1,10 +1,10 @@
 // src/screens/AroundTheClockScreen.tsx
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { View, Text, Alert, Pressable } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { useGameStore } from '../store/gameStore';
-import { getAverageDartsPerNumber } from '../engine/aroundTheClock';
+import React, {useCallback, useEffect, useLayoutEffect, useRef} from 'react';
+import {Alert, Pressable, Text, View} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../navigation/RootNavigator';
+import {useGameStore} from '../store/gameStore';
+import {getAverageDartsPerNumber} from '../engine/aroundTheClock';
 import AppButton from '../components/AppButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClock'>;
@@ -17,7 +17,7 @@ export default function AroundTheClockScreen({ navigation }: Props) {
     const winnerPlayerId = useGameStore(s => s.aroundTheClockWinnerPlayerId);
 
     const registerAroundTheClockDart = useGameStore(s => s.registerAroundTheClockDart);
-    const abandonPractice = useGameStore(s => s.abandonPractice);
+    const resetAroundTheClock = useGameStore(s => s.resetAroundTheClock);
     const players = useGameStore(s => s.players);
 
     const getPlayerName = (id: string) => players.find(p => p.id === id)?.name ?? id;
@@ -36,13 +36,16 @@ export default function AroundTheClockScreen({ navigation }: Props) {
                     style: 'destructive',
                     onPress: () => {
                         allowRemoveRef.current = true;
-                        abandonPractice();
-                        navigation.navigate('Home');
+                        resetAroundTheClock();
+                        navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Home' }],
+                        });
                     },
                 },
             ]
         );
-    }, [abandonPractice, navigation]);
+    }, [resetAroundTheClock, navigation]);
 
     useLayoutEffect(() => {
         if (!isActive) {
@@ -64,13 +67,11 @@ export default function AroundTheClockScreen({ navigation }: Props) {
     useEffect(() => {
         if (!isActive) return;
 
-        const unsub = navigation.addListener('beforeRemove', (e) => {
+        return navigation.addListener('beforeRemove', (e) => {
             if (allowRemoveRef.current) return;
             e.preventDefault();
             confirmExit();
         });
-
-        return unsub;
     }, [navigation, isActive, confirmExit]);
 
     // When finished, go to summary

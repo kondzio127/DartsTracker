@@ -4,16 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add turn logic to X01: dart handling, undo/redo, bust and checkout detection, and turn state management">
-      <change afterPath="$PROJECT_DIR$/src/utils/flags.ts" afterDir="false" />
+    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Added flags">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/engine/x01.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/engine/x01.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/PlayerFormScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayerFormScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,7 +16,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="36" />
+    <option name="cachedIndexableFilesCount" value="37" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="FileTemplateManagerImpl">
@@ -112,7 +107,8 @@
       <workItem from="1771453050728" duration="10000" />
       <workItem from="1771453069030" duration="10000" />
       <workItem from="1771453080735" duration="28860000" />
-      <workItem from="1771789520932" duration="8670000" />
+      <workItem from="1771789520932" duration="12178000" />
+      <workItem from="1772835099990" duration="2337000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />
@@ -186,7 +182,15 @@
       <option name="project" value="LOCAL" />
       <updated>1771795949212</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Added flags">
+      <option name="closed" value="true" />
+      <created>1771802708761</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1771802708761</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -211,6 +215,7 @@
     <MESSAGE value="Replace Button components with a reusable AppButton across all screens for consistency and maintainability." />
     <MESSAGE value="Add exit confirmation logic for active match and practice sessions, improve navigation safety with state resets and gesture blocking" />
     <MESSAGE value="Add turn logic to X01: dart handling, undo/redo, bust and checkout detection, and turn state management" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add turn logic to X01: dart handling, undo/redo, bust and checkout detection, and turn state management" />
+    <MESSAGE value="Added flags" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added flags" />
   </component>
 </project>

@@ -1,10 +1,17 @@
 // src/screens/ScoreboardScreen.tsx
+//
+// Changes requested:
+// 1) Tips are NOT visible if no tips are available (no placeholder bar).
+// 2) Auto-advance turns: when 3 darts are entered OR the turn busts,
+//    the app automatically commits the turn and switches player.
+//    (You still CAN keep an optional End Turn button for rare cases.)
+
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { View, Text, Alert, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
-import { getLegAverage } from '../engine/x01';
+import { getLegAverage, getCheckoutAdvice } from '../engine/x01';
 import { DartMultiplier } from '../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scoreboard'>;
@@ -19,6 +26,7 @@ const MUTED = '#6B7280';
 const BORDER = '#D1D5DB';
 const KEY_BG = '#F2F2F7';
 
+// Requested: keypad ordered 1 → 20
 const numberRows: number[][] = [
     [1, 2, 3, 4, 5],
     [6, 7, 8, 9, 10],
@@ -41,8 +49,8 @@ function scoreFor(segment: number, m: DartMultiplier): number {
 }
 
 function multiplierColor(m: DartMultiplier): string {
-    if (m === 2) return BLUE;
-    if (m === 3) return RED;
+    if (m === 2) return BLUE; // Double = blue
+    if (m === 3) return RED;  // Triple = red
     return TEXT;
 }
 
@@ -92,14 +100,22 @@ export default function ScoreboardScreen({ navigation }: Props) {
     const [multiplier, setMultiplier] = useState<DartMultiplier>(1);
 
     const currentPlayerId = currentLegState?.currentPlayerId;
-
     const nameOf = (id: string) => players.find(p => p.id === id)?.name ?? 'Player';
 
+    // Turn total = sum of the darts entered so far
     const turnTotal = useMemo(() => {
         if (!currentLegState) return 0;
         return currentLegState.turnDarts.reduce((sum, d) => sum + d.score, 0);
     }, [currentLegState?.turnDarts]);
 
+    // Remaining score for current thrower
+    const remaining = currentLegState?.scoresByPlayer?.[currentPlayerId ?? ''] ?? 0;
+
+    // Darts left this turn
+    const dartsThrown = currentLegState?.turnDarts.length ?? 0;
+    const dartsLeft = 3 - dartsThrown;
+
+    // Lock keypad if 3 darts entered or turn is no longer editable
     const turnLocked = useMemo(() => {
         if (!currentLegState) return false;
         return currentLegState.turnDarts.length >= 3 || currentLegState.turnStatus !== 'IN_PROGRESS';
@@ -108,22 +124,60 @@ export default function ScoreboardScreen({ navigation }: Props) {
     const canUndo =
         (currentLegState?.turnDarts.length ?? 0) > 0 || (currentLegState?.visits.length ?? 0) > 0;
 
+    // --- Checkout advice (only computed when it matters) ---
+    const checkoutAdvice = useMemo(() => {
+        if (!currentLegState || !currentPlayerId) return null;
+        if (currentLegState.turnStatus !== 'IN_PROGRESS') return null;
+        if (dartsLeft <= 0) return null;
+
+        // Reduce noise early in the leg (optional).
+        // If you want more frequent tips, raise this number or remove it.
+        if (remaining > 230) return null;
+
+        return getCheckoutAdvice(remaining, dartsLeft);
+    }, [currentLegState?.turnStatus, remaining, dartsLeft, currentPlayerId]);
+
+    /**
+     * ✅ AUTO TURN ADVANCE
+     *
+     * We automatically commit/rotate when:
+     * - 3 darts are entered (normal turn end), OR
+     * - the engine marks a BUST (turn ends immediately).
+     *
+     * Checkout is handled separately by your store (it commits immediately and ends the leg),
+     * so we avoid ending the turn if winner exists.
+     */
+    useEffect(() => {
+        if (!currentLegState) return;
+
+        // If leg is won, don't auto-end-turn; your finish flow will run.
+        if (currentLegState.winnerPlayerId) return;
+
+        // If bust, the turn is over and should rotate immediately.
+        if (currentLegState.turnStatus === 'BUST') {
+            endTurn();
+            return;
+        }
+
+        // If 3 darts entered, auto-submit the turn and rotate.
+        if (currentLegState.turnStatus === 'IN_PROGRESS' && currentLegState.turnDarts.length === 3) {
+            endTurn();
+        }
+    }, [currentLegState?.turnStatus, currentLegState?.turnDarts.length, currentLegState?.winnerPlayerId, endTurn]);
+
+    // Exit confirmation (header left)
     const confirmExit = useCallback(() => {
-        Alert.alert(
-            'Exit match?',
-            'You will lose the current in-progress match.',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Exit',
-                    style: 'destructive',
-                    onPress: () => {
-                        abandonMatch();
-                        navigation.navigate('Home');
-                    },
+        Alert.alert('Exit match?', 'You will lose the current in-progress match.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Exit',
+                style: 'destructive',
+                onPress: () => {
+                    abandonMatch();
+                    navigation.navigate('Home');
                 },
-            ]
-        );
+            },
+        ]);
     }, [abandonMatch, navigation]);
 
     useLayoutEffect(() => {
@@ -136,13 +190,14 @@ export default function ScoreboardScreen({ navigation }: Props) {
         });
     }, [navigation, confirmExit]);
 
-    // With "manual Next", a leg only finishes when you press Next and the engine commits a CHECKOUT.
+    // Finish flow: when winner is set -> finalize and go to summary
     useEffect(() => {
         if (!currentLegState?.winnerPlayerId || !currentMatch) return;
         const { matchFinished, matchId } = finishLegIfNeeded();
         if (matchFinished && matchId) navigation.replace('MatchSummary', { matchId });
     }, [currentLegState?.winnerPlayerId, currentMatch, finishLegIfNeeded, navigation]);
 
+    // Fallback if store state is missing
     if (!currentMatch || !currentLegState || !currentPlayerId) {
         return (
             <View style={styles.center}>
@@ -153,53 +208,54 @@ export default function ScoreboardScreen({ navigation }: Props) {
     }
 
     const pushNumber = (segment: number) => {
+        // Prevent impossible “triple bull”
         if (segment === 25 && multiplier === 3) {
             Alert.alert('Not possible', 'There is no Triple Bull. Use 25 or Bull.');
             return;
         }
-        if (currentLegState.turnDarts.length >= 3) {
-            Alert.alert('Turn complete', 'Press Next to submit the turn (or Undo to edit).');
-            return;
-        }
-        if (currentLegState.turnStatus !== 'IN_PROGRESS') {
-            Alert.alert('Turn ended', 'Press Next to submit the turn (or Undo to edit).');
+
+        // If the turn is locked, user must undo first.
+        if (turnLocked) {
+            Alert.alert('Turn locked', 'Undo to edit.');
             return;
         }
 
         addDart(segment, multiplier);
+
+        // Reset to single after each dart for speed (DartCounter-style)
         setMultiplier(1);
     };
 
     const pushMiss = () => pushNumber(0);
+
     const push25 = () => {
         if (turnLocked) {
-            Alert.alert('Turn complete', 'Press Next to submit the turn (or Undo to edit).');
+            Alert.alert('Turn locked', 'Undo to edit.');
             return;
         }
         addDart(25, 1);
         setMultiplier(1);
     };
+
     const pushBull = () => {
         if (turnLocked) {
-            Alert.alert('Turn complete', 'Press Next to submit the turn (or Undo to edit).');
+            Alert.alert('Turn locked', 'Undo to edit.');
             return;
         }
         addDart(25, 2);
         setMultiplier(1);
     };
 
-    // Hold Undo = clear current turn quickly; if current turn empty, pull back previous turn then clear
+    // Hold Undo = clear current turn fast (or pull back previous then clear)
     const undoWholeTurn = () => {
         const store = useGameStore.getState();
         const st = store.currentLegState;
         if (!st) return;
 
-        if (st.turnDarts.length === 0) {
-            // bring back previous committed visit (if any)
-            store.undoDart();
-        }
+        // If current turn empty, first pull back the previous committed visit
+        if (st.turnDarts.length === 0) store.undoDart();
 
-        // clear all darts in the editable turn
+        // Then remove up to 3 darts from the restored/active turn
         for (let i = 0; i < 3; i++) {
             const now = useGameStore.getState().currentLegState;
             if (!now || now.turnDarts.length === 0) break;
@@ -207,10 +263,37 @@ export default function ScoreboardScreen({ navigation }: Props) {
         }
     };
 
+    // Compact tip details: tap opens a full alert
+    const openTipDetails = () => {
+        if (!checkoutAdvice) return;
+
+        if (checkoutAdvice.kind === 'checkout') {
+            Alert.alert(
+                'Checkout',
+                `Remaining: ${remaining}\nDarts left: ${dartsLeft}\n\nRoute:\n${checkoutAdvice.route.join(' → ')}`
+            );
+            return;
+        }
+
+        const setup = checkoutAdvice.setup;
+        if (setup) {
+            Alert.alert(
+                'Setup',
+                `${checkoutAdvice.message}\n\nAim: ${setup.aim}\nLeaves: ${setup.leaves}${
+                    setup.nextOut?.length ? `\n\nNext out:\n${setup.nextOut.join(' → ')}` : ''
+                }`
+            );
+            return;
+        }
+
+        Alert.alert('Setup', `${checkoutAdvice.message}\n\nRemaining: ${remaining}\nDarts left: ${dartsLeft}`);
+    };
+
     const accent = multiplierColor(multiplier);
 
     return (
         <View style={styles.screen}>
+            {/* Header row */}
             <View style={styles.header}>
                 <View style={{ gap: 2 }}>
                     <Text style={styles.title}>Scoreboard</Text>
@@ -225,6 +308,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 </View>
             </View>
 
+            {/* Players card */}
             <View style={styles.playersCard}>
                 {currentMatch.playerIds.map(pid => {
                     const isTurn = pid === currentLegState.currentPlayerId;
@@ -240,6 +324,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 })}
             </View>
 
+            {/* Turn card */}
             <View style={styles.turnCard}>
                 <View style={styles.turnSlots}>
                     {[0, 1, 2].map(i => {
@@ -253,26 +338,55 @@ export default function ScoreboardScreen({ navigation }: Props) {
                     })}
                 </View>
 
+                {/* ✅ IMPORTANT: render tips ONLY if advice exists */}
+                {checkoutAdvice && (
+                    <Pressable
+                        onPress={openTipDetails}
+                        style={({ pressed }) => [
+                            styles.tipBar,
+                            { borderColor: '#BBD7FF', backgroundColor: '#F3F8FF' },
+                            pressed ? { opacity: 0.88 } : null,
+                        ]}
+                    >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                            <Text style={styles.tipBarTitle}>{checkoutAdvice.kind === 'checkout' ? 'Checkout' : 'Setup'}</Text>
+                            <Text style={styles.tipBarTap}>Tap for details</Text>
+                        </View>
+
+                        <Text style={styles.tipBarLine} numberOfLines={1}>
+                            {checkoutAdvice.kind === 'checkout'
+                                ? checkoutAdvice.route.join(' → ')
+                                : checkoutAdvice.setup
+                                    ? `Aim ${checkoutAdvice.setup.aim} → leave ${checkoutAdvice.setup.leaves}`
+                                    : checkoutAdvice.message}
+                        </Text>
+
+                        <Text style={styles.tipBarLine2} numberOfLines={1}>
+                            Remaining {remaining} • {dartsLeft} dart{dartsLeft === 1 ? '' : 's'} left
+                        </Text>
+                    </Pressable>
+                )}
+
                 <View style={styles.turnActions}>
                     <ActionButton label="Undo" onPress={undoDart} onLongPress={undoWholeTurn} disabled={!canUndo} hint="hold" />
-                    <ActionButton
-                        label="Next"
-                        onPress={endTurn}
-                        tone="primary"
-                        hint="submit"
-                    />
+
+                    {/* Optional manual end-turn button:
+             Not required (auto-advance handles it), but useful if someone wants to end early. */}
+                    <ActionButton label="End turn" onPress={endTurn} hint="optional" />
                 </View>
 
                 <Text style={styles.microHint}>
-                    Enter up to 3 darts, then press <Text style={{ fontWeight: '900' }}>Next</Text> to move on.
+                    Auto-advances after 3 darts (or bust). Undo to correct.
                 </Text>
             </View>
 
+            {/* Multiplier buttons */}
             <View style={styles.multRow}>
                 {([1, 2, 3] as DartMultiplier[]).map(m => {
                     const selected = multiplier === m;
                     const col = multiplierColor(m);
                     const label = m === 1 ? 'S' : m === 2 ? 'D' : 'T';
+
                     return (
                         <Pressable
                             key={m}
@@ -293,6 +407,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 })}
             </View>
 
+            {/* Keypad */}
             <View style={styles.pad}>
                 {numberRows.map((row, idx) => (
                     <View key={idx} style={styles.padRow}>
@@ -317,7 +432,12 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 <View style={styles.padRow}>
                     <Pressable
                         onPress={pushMiss}
-                        style={({ pressed }) => [styles.key, styles.keyMiss, pressed && !turnLocked ? styles.keyPressed : null, { opacity: turnLocked ? 0.5 : 1 }]}
+                        style={({ pressed }) => [
+                            styles.key,
+                            styles.keyMiss,
+                            pressed && !turnLocked ? styles.keyPressed : null,
+                            { opacity: turnLocked ? 0.5 : 1 },
+                        ]}
                         disabled={turnLocked}
                     >
                         <Text style={[styles.keyTop, { color: '#fff' }]}>MISS</Text>
@@ -326,7 +446,12 @@ export default function ScoreboardScreen({ navigation }: Props) {
 
                     <Pressable
                         onPress={push25}
-                        style={({ pressed }) => [styles.key, styles.key25, pressed && !turnLocked ? styles.keyPressed : null, { opacity: turnLocked ? 0.5 : 1 }]}
+                        style={({ pressed }) => [
+                            styles.key,
+                            styles.key25,
+                            pressed && !turnLocked ? styles.keyPressed : null,
+                            { opacity: turnLocked ? 0.5 : 1 },
+                        ]}
                         disabled={turnLocked}
                     >
                         <Text style={[styles.keyTop, { color: '#fff' }]}>25</Text>
@@ -335,7 +460,12 @@ export default function ScoreboardScreen({ navigation }: Props) {
 
                     <Pressable
                         onPress={pushBull}
-                        style={({ pressed }) => [styles.key, styles.keyBull, pressed && !turnLocked ? styles.keyPressed : null, { opacity: turnLocked ? 0.5 : 1 }]}
+                        style={({ pressed }) => [
+                            styles.key,
+                            styles.keyBull,
+                            pressed && !turnLocked ? styles.keyPressed : null,
+                            { opacity: turnLocked ? 0.5 : 1 },
+                        ]}
                         disabled={turnLocked}
                     >
                         <Text style={[styles.keyTop, { color: '#fff' }]}>BULL</Text>
@@ -344,37 +474,59 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 </View>
             </View>
 
-            <Text style={styles.tip}>Tap Undo = last dart/turn • Hold Undo = clear the whole turn</Text>
+            <Text style={styles.tip}>Tap Undo = last dart/turn • Hold Undo = clear whole turn</Text>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: BG, padding: 14, gap: 10 },
+    screen: { flex: 1, backgroundColor: BG, padding: 12, gap: 8 },
     center: { flex: 1, padding: 16, justifyContent: 'center', alignItems: 'center', gap: 12 },
 
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 2 },
     title: { fontSize: 20, fontWeight: '800', color: TEXT },
-    subtitle: { fontSize: 14, color: MUTED },
+    subtitle: { fontSize: 13, color: MUTED },
     bold: { fontWeight: '800', color: TEXT },
 
     turnTotalLabel: { fontSize: 12, color: MUTED },
     turnTotalValue: { fontSize: 22, fontWeight: '900', color: TEXT },
 
     playersCard: { borderWidth: 1, borderColor: BORDER, borderRadius: 14, padding: 10, gap: 8, backgroundColor: '#fff' },
-    playerRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: '#fff' },
+    playerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: BORDER,
+        borderRadius: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+    },
     playerName: { fontSize: 15, fontWeight: '800', color: TEXT },
     playerMeta: { fontSize: 12, color: MUTED, marginTop: 2 },
-    remaining: { fontSize: 22, fontWeight: '900', color: TEXT },
+    remaining: { fontSize: 20, fontWeight: '900', color: TEXT },
 
     turnCard: { borderWidth: 1, borderColor: BORDER, borderRadius: 14, padding: 10, backgroundColor: '#fff', gap: 8 },
     turnSlots: { flexDirection: 'row', gap: 8 },
-    turnSlot: { flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 2, backgroundColor: '#fff' },
+    turnSlot: { flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingVertical: 9, alignItems: 'center', gap: 2, backgroundColor: '#fff' },
     turnSlotTop: { fontSize: 14, fontWeight: '900', color: TEXT },
     turnSlotBottom: { fontSize: 12, color: MUTED, fontWeight: '800' },
-    turnActions: { flexDirection: 'row', gap: 10 },
 
-    microHint: { fontSize: 12, color: MUTED, textAlign: 'center' },
+    // Tip bar (only appears if checkoutAdvice exists)
+    tipBar: {
+        borderWidth: 1,
+        borderRadius: 14,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        gap: 2,
+    },
+    tipBarTitle: { fontSize: 12, fontWeight: '900', color: BLUE },
+    tipBarTap: { fontSize: 11, fontWeight: '800', color: MUTED },
+    tipBarLine: { fontSize: 13, fontWeight: '800', color: TEXT },
+    tipBarLine2: { fontSize: 12, fontWeight: '700', color: MUTED },
+
+    turnActions: { flexDirection: 'row', gap: 10 },
+    microHint: { fontSize: 11, color: MUTED, textAlign: 'center' },
 
     actionBtn: { flex: 1, borderWidth: 1, borderRadius: 14, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', gap: 2 },
     actionBtnText: { fontSize: 16, fontWeight: '900' },
@@ -396,5 +548,5 @@ const styles = StyleSheet.create({
     key25: { backgroundColor: GREEN, borderColor: GREEN },
     keyBull: { backgroundColor: RED, borderColor: RED },
 
-    tip: { fontSize: 12, color: MUTED, textAlign: 'center' },
+    tip: { fontSize: 11, color: MUTED, textAlign: 'center' },
 });

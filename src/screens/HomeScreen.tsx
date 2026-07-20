@@ -11,7 +11,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export default function HomeScreen({ navigation }: Props) {
     const playersCount = useGameStore(s => s.players.filter(p => !p.isHidden).length);
     const matchesCount = useGameStore(s => s.matches.length);
-    const hasActiveMatch = useGameStore(s => Boolean(s.currentMatch && s.currentLegState));
+    const hasActiveMatch = useGameStore(s => Boolean(s.currentMatch && s.currentLegState && s.currentLegId));
+    const hasActivePractice = useGameStore(
+        s => s.aroundTheClockPlayerIds.length > 0 && !s.aroundTheClockWinnerPlayerId
+    );
 
     return (
         <View style={{ flex: 1, padding: 16, gap: 12, justifyContent: 'center' }}>
@@ -27,7 +30,19 @@ export default function HomeScreen({ navigation }: Props) {
                 <AppButton label="History" variant="secondary" onPress={() => navigation.navigate('History')} />
 
                 {hasActiveMatch && (
-                    <AppButton label="Resume Match" variant="primary" onPress={() => navigation.navigate('Scoreboard')} />
+                    <AppButton
+                        label="Resume X01 Match"
+                        variant="primary"
+                        onPress={() => navigation.navigate('Scoreboard')}
+                    />
+                )}
+
+                {hasActivePractice && (
+                    <AppButton
+                        label="Resume Around the Clock"
+                        variant="primary"
+                        onPress={() => navigation.navigate('AroundTheClock')}
+                    />
                 )}
             </View>
         </View>

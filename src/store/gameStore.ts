@@ -450,12 +450,43 @@ export const useGameStore = create<GameState>()(
         }),
         {
             name: 'darts-tracker-store-v1',
-            version: 1,
+            version: 2,
             storage: createJSONStorage(() => AsyncStorage),
+            migrate: (persistedState, version) => {
+                const state = persistedState as Partial<GameState>;
+
+                if (version < 2) {
+                    return {
+                        ...state,
+                        currentMatch: state.currentMatch ?? undefined,
+                        currentLegState: state.currentLegState ?? undefined,
+                        currentLegId: state.currentLegId ?? undefined,
+                        currentLegWins: state.currentLegWins ?? {},
+                        aroundTheClockStatesByPlayer: state.aroundTheClockStatesByPlayer ?? {},
+                        aroundTheClockPlayerIds: state.aroundTheClockPlayerIds ?? [],
+                        aroundTheClockCurrentPlayerIndex: state.aroundTheClockCurrentPlayerIndex ?? 0,
+                        aroundTheClockDartInTurn: state.aroundTheClockDartInTurn ?? 0,
+                        aroundTheClockStartedAt: state.aroundTheClockStartedAt ?? undefined,
+                        aroundTheClockWinnerPlayerId: state.aroundTheClockWinnerPlayerId ?? undefined,
+                    } as GameState;
+                }
+
+                return state as GameState;
+            },
             partialize: state => ({
                 players: state.players,
                 matches: state.matches,
+                currentMatch: state.currentMatch,
+                currentLegState: state.currentLegState,
+                currentLegId: state.currentLegId,
+                currentLegWins: state.currentLegWins,
+                aroundTheClockStatesByPlayer: state.aroundTheClockStatesByPlayer,
                 aroundTheClockSessions: state.aroundTheClockSessions,
+                aroundTheClockPlayerIds: state.aroundTheClockPlayerIds,
+                aroundTheClockCurrentPlayerIndex: state.aroundTheClockCurrentPlayerIndex,
+                aroundTheClockDartInTurn: state.aroundTheClockDartInTurn,
+                aroundTheClockStartedAt: state.aroundTheClockStartedAt,
+                aroundTheClockWinnerPlayerId: state.aroundTheClockWinnerPlayerId,
             }),
         }
     )

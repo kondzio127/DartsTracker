@@ -1,10 +1,10 @@
 // src/screens/AroundTheClockScreen.tsx
-import React, {useCallback, useEffect, useLayoutEffect, useRef} from 'react';
-import {Alert, Pressable, Text, View} from 'react-native';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../navigation/RootNavigator';
-import {useGameStore} from '../store/gameStore';
-import {getAverageDartsPerNumber} from '../engine/aroundTheClock';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { View, Text, Alert, Pressable } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
+import { useGameStore } from '../store/gameStore';
+import { getAverageDartsPerNumber } from '../engine/aroundTheClock';
 import AppButton from '../components/AppButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClock'>;
@@ -67,11 +67,13 @@ export default function AroundTheClockScreen({ navigation }: Props) {
     useEffect(() => {
         if (!isActive) return;
 
-        return navigation.addListener('beforeRemove', (e) => {
+        const unsub = navigation.addListener('beforeRemove', (e) => {
             if (allowRemoveRef.current) return;
             e.preventDefault();
             confirmExit();
         });
+
+        return unsub;
     }, [navigation, isActive, confirmExit]);
 
     // When finished, go to summary

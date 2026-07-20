@@ -5,16 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Tips + UI fix">
-      <change afterPath="$PROJECT_DIR$/src/screens/PlayerStatsScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/engine/x01.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/engine/x01.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/stats.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +52,7 @@
     <urls />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="QODANA_PROBLEMS_VIEW_TAB" />
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -117,7 +111,7 @@
       <workItem from="1772835099990" duration="2421000" />
       <workItem from="1773090922383" duration="6225000" />
       <workItem from="1774127682741" duration="6628000" />
-      <workItem from="1784576068097" duration="801000" />
+      <workItem from="1784576068097" duration="2701000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />
@@ -207,7 +201,15 @@
       <option name="project" value="LOCAL" />
       <updated>1772838280764</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Tips + UI fix">
+      <option name="closed" value="true" />
+      <created>1784577151604</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1784577151604</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

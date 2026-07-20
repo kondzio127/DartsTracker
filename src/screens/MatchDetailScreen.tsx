@@ -28,13 +28,14 @@ export default function MatchDetailScreen({ route, navigation }: Props) {
     }
 
     const winnerId = getMatchWinnerId(match);
-    const winner = winnerId ? playerName(winnerId) : '—';
+    const winner = match.status === 'COMPLETED' && winnerId ? playerName(winnerId) : '—';
 
     return (
         <View style={{ flex: 1, padding: 16, gap: 12 }}>
             <Text style={{ fontSize: 20, fontWeight: '600' }}>Match Detail</Text>
 
             <Text>Date: {new Date(match.createdAt).toLocaleString()}</Text>
+            <Text>Status: {match.status.replace('_', ' ')}</Text>
             <Text>Mode: {match.mode}</Text>
             <Text>Start score: {match.startScore}</Text>
             <Text>Best of legs: {match.bestOfLegs ?? 1}</Text>

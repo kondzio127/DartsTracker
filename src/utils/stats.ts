@@ -2,12 +2,16 @@
 
 import { Match, Player, Visit } from '../types/domain';
 
+function isCompletedMatch(match: Match): boolean {
+    return match.status === 'COMPLETED';
+}
+
 /* =========================================================
    Small existing helpers
    ========================================================= */
 
 export function getMatchWinnerId(match: Match): string | undefined {
-    if (!match.legs.length) return undefined;
+    if (!isCompletedMatch(match) || !match.legs.length) return undefined;
 
     if (match.legWinsByPlayer) {
         let bestId: string | undefined;
@@ -166,7 +170,7 @@ function makeRate(attempts = 0, hits = 0): BasicRate {
 
 function windowStartDate(window: StatsWindowKey, allMatches: Match[], playerId: string): Date | null {
     const playerMatches = allMatches
-        .filter(m => m.playerIds.includes(playerId))
+        .filter(m => isCompletedMatch(m) && m.playerIds.includes(playerId))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     if (window === 'allTime') return null;
@@ -184,7 +188,7 @@ function windowStartDate(window: StatsWindowKey, allMatches: Match[], playerId: 
 }
 
 function filterMatchesForWindow(matches: Match[], playerId: string, window: StatsWindowKey): Match[] {
-    const playerMatches = matches.filter(m => m.playerIds.includes(playerId));
+    const playerMatches = matches.filter(m => isCompletedMatch(m) && m.playerIds.includes(playerId));
 
     if (window === 'allTime') return playerMatches;
 
@@ -243,7 +247,7 @@ export function aggregatePlayerStats(
 ): PlayerAggregatedStats {
     const playerName = players.find(p => p.id === playerId)?.name;
 
-    const relevantMatches = matches.filter(m => m.playerIds.includes(playerId));
+    const relevantMatches = matches.filter(m => isCompletedMatch(m) && m.playerIds.includes(playerId));
 
     let matchesPlayed = relevantMatches.length;
     let legsPlayed = 0;

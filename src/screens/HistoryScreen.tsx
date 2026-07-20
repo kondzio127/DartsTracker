@@ -1,23 +1,45 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView } from 'react-native';
+import {
+    View,
+    Text,
+    FlatList,
+    Pressable,
+    ScrollView,
+    Alert,
+    StyleSheet,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
+import { MatchStatus } from '../types/domain';
 import { getMatchWinnerId } from '../utils/stats';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
 
 type ModeFilter = 'ALL' | 'X01' | 'PRACTICE';
+type StatusFilter = MatchStatus | 'ALL';
 type PlayerFilter = 'ALL' | string;
 
 type HistoryItem =
     | { kind: 'match'; id: string; date: string }
     | { kind: 'practice'; id: string; date: string };
 
+const STATUS_LABELS: Record<StatusFilter, string> = {
+    COMPLETED: 'Completed',
+    IN_PROGRESS: 'In progress',
+    ABANDONED: 'Abandoned',
+    ALL: 'All statuses',
+};
+
 export default function HistoryScreen({ navigation }: Props) {
     const matches = useGameStore(s => s.matches);
     const players = useGameStore(s => s.players);
     const aroundTheClockSessions = useGameStore(s => s.aroundTheClockSessions);
+    const currentMatch = useGameStore(s => s.currentMatch);
+    const currentLegState = useGameStore(s => s.currentLegState);
+    const currentLegId = useGameStore(s => s.currentLegId);
+    const startMatch = useGameStore(s => s.startMatch);
+    const deleteMatch = useGameStore(s => s.deleteMatch);
 
     const activePlayers = useMemo(
         () => players.filter(p => !p.isHidden).sort((a, b) => a.name.localeCompare(b.name)),
@@ -25,110 +47,224 @@ export default function HistoryScreen({ navigation }: Props) {
     );
 
     const [mode, setMode] = useState<ModeFilter>('ALL');
+    const [status, setStatus] = useState<StatusFilter>('COMPLETED');
     const [playerFilter, setPlayerFilter] = useState<PlayerFilter>('ALL');
 
     const playerName = (id: string) => players.find(p => p.id === id)?.name ?? 'Unknown';
 
     const items = useMemo(() => {
-        const list: { kind: 'match' | 'practice'; id: string; date: string }[] = [];
+        const list: HistoryItem[] = [];
 
         if (mode === 'ALL' || mode === 'X01') {
-            for (const m of matches) {
-                // show finished matches first; you can remove this if you want in-progress too
-                list.push({ kind: 'match', id: m.id, date: m.createdAt });
+            for (const match of matches) {
+                if (status !== 'ALL' && match.status !== status) continue;
+
+                list.push({
+                    kind: 'match',
+                    id: match.id,
+                    date: match.finishedAt ?? match.abandonedAt ?? match.createdAt,
+                });
             }
         }
 
-        if (mode === 'ALL' || mode === 'PRACTICE') {
-            for (const s of aroundTheClockSessions) {
-                list.push({ kind: 'practice', id: s.id, date: s.finishedAt });
+        // Completed practice sessions belong in the completed/all views only.
+        if (
+            (mode === 'ALL' || mode === 'PRACTICE') &&
+            (status === 'COMPLETED' || status === 'ALL')
+        ) {
+            for (const session of aroundTheClockSessions) {
+                list.push({ kind: 'practice', id: session.id, date: session.finishedAt });
             }
         }
 
-        // apply player filter
         const filtered = list.filter(item => {
             if (playerFilter === 'ALL') return true;
+
             if (item.kind === 'match') {
                 const match = matches.find(m => m.id === item.id);
-                return match ? match.playerIds.includes(playerFilter) : false;
-            } else {
-                const sess = aroundTheClockSessions.find(s => s.id === item.id);
-                return sess?.playerId === playerFilter;
+                return match?.playerIds.includes(playerFilter) ?? false;
             }
+
+            const session = aroundTheClockSessions.find(s => s.id === item.id);
+            return session?.playerId === playerFilter;
         });
 
-        // sort newest first
         filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         return filtered;
-    }, [mode, playerFilter, matches, aroundTheClockSessions]);
+    }, [mode, status, playerFilter, matches, aroundTheClockSessions]);
+
+    const restartMatch = (matchId: string) => {
+        const match = matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        startMatch({
+            playerIds: match.playerIds,
+            startScore: match.startScore,
+            bestOfLegs: match.bestOfLegs,
+        });
+        navigation.navigate('Scoreboard');
+    };
+
+    const confirmDelete = (matchId: string) => {
+        Alert.alert(
+            'Delete match?',
+            'This removes the match permanently from history.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => deleteMatch(matchId),
+                },
+            ]
+        );
+    };
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 12 }}>
-            <Text style={{ fontSize: 20, fontWeight: '600' }}>History</Text>
+        <View style={styles.screen}>
+            <Text style={styles.title}>History</Text>
 
-            {/* Mode filter */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-                {(['ALL','X01','PRACTICE'] as ModeFilter[]).map(m => (
-                    <Pressable key={m} onPress={() => setMode(m)} style={{ borderWidth: 1, padding: 8, borderRadius: 10, opacity: mode === m ? 1 : 0.6 }}>
-                        <Text>{m}</Text>
-                    </Pressable>
+            <Text style={styles.filterLabel}>Game type</Text>
+            <View style={styles.chipRow}>
+                {(['ALL', 'X01', 'PRACTICE'] as ModeFilter[]).map(value => (
+                    <FilterChip
+                        key={value}
+                        label={value === 'ALL' ? 'All' : value === 'PRACTICE' ? 'Practice' : 'X01'}
+                        selected={mode === value}
+                        onPress={() => setMode(value)}
+                    />
                 ))}
             </View>
 
-            {/* Player filter chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable onPress={() => setPlayerFilter('ALL')} style={{ borderWidth: 1, padding: 8, borderRadius: 10, opacity: playerFilter === 'ALL' ? 1 : 0.6 }}>
-                        <Text>All players</Text>
-                    </Pressable>
+            <Text style={styles.filterLabel}>Status</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                    {(['COMPLETED', 'IN_PROGRESS', 'ABANDONED', 'ALL'] as StatusFilter[]).map(value => (
+                        <FilterChip
+                            key={value}
+                            label={STATUS_LABELS[value]}
+                            selected={status === value}
+                            onPress={() => setStatus(value)}
+                        />
+                    ))}
+                </View>
+            </ScrollView>
 
-                    {activePlayers.map(p => (
-                        <Pressable key={p.id} onPress={() => setPlayerFilter(p.id)} style={{ borderWidth: 1, padding: 8, borderRadius: 10, opacity: playerFilter === p.id ? 1 : 0.6 }}>
-                            <Text>{p.name}</Text>
-                        </Pressable>
+            <Text style={styles.filterLabel}>Player</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chipRow}>
+                    <FilterChip
+                        label="All players"
+                        selected={playerFilter === 'ALL'}
+                        onPress={() => setPlayerFilter('ALL')}
+                    />
+
+                    {activePlayers.map(player => (
+                        <FilterChip
+                            key={player.id}
+                            label={player.name}
+                            selected={playerFilter === player.id}
+                            onPress={() => setPlayerFilter(player.id)}
+                        />
                     ))}
                 </View>
             </ScrollView>
 
             <FlatList
                 data={items}
-                keyExtractor={(it) => `${it.kind}:${it.id}`}
+                keyExtractor={item => `${item.kind}:${item.id}`}
+                contentContainerStyle={items.length === 0 ? styles.emptyList : undefined}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>No sessions match these filters.</Text>
+                }
                 renderItem={({ item }) => {
-                    if (item.kind === 'match') {
-                        const match = matches.find(m => m.id === item.id);
-                        if (!match) return null;
-                        const winnerId = getMatchWinnerId(match);
-                        const winner = winnerId ? playerName(winnerId) : '—';
-                        const playersStr = match.playerIds.map(playerName).join(' vs ');
+                    if (item.kind === 'practice') {
+                        const session = aroundTheClockSessions.find(s => s.id === item.id);
+                        if (!session) return null;
 
                         return (
-                            <Pressable
-                                onPress={() => navigation.navigate('MatchDetail', { matchId: match.id })}
-                                style={{ borderWidth: 1, borderRadius: 10, padding: 12 }}
-                            >
-                                <Text style={{ fontWeight: '700' }}>
-                                    {new Date(match.createdAt).toLocaleString()}
+                            <View style={styles.card}>
+                                <Text style={styles.cardDate}>
+                                    {new Date(session.finishedAt).toLocaleString()}
                                 </Text>
-                                <Text>Mode: {match.mode}</Text>
-                                <Text>Players: {playersStr}</Text>
-                                <Text>Winner: {winner}</Text>
-                            </Pressable>
+                                <Text style={styles.statusCompleted}>Completed practice</Text>
+                                <Text>Around the Clock</Text>
+                                <Text>Player: {session.playerId ? playerName(session.playerId) : '—'}</Text>
+                                <Text>Darts thrown: {session.dartsThrown}</Text>
+                                <Text>Best streak: {session.bestStreak}</Text>
+                            </View>
                         );
                     }
 
-                    const sess = aroundTheClockSessions.find(s => s.id === item.id);
-                    if (!sess) return null;
+                    const match = matches.find(m => m.id === item.id);
+                    if (!match) return null;
+
+                    const playersText = match.playerIds.map(playerName).join(' vs ');
+                    const winnerId = getMatchWinnerId(match);
+                    const canResume =
+                        match.status === 'IN_PROGRESS' &&
+                        currentMatch?.id === match.id &&
+                        Boolean(currentLegState && currentLegId);
 
                     return (
-                        <View style={{ borderWidth: 1, borderRadius: 10, padding: 12 }}>
-                            <Text style={{ fontWeight: '700' }}>
-                                {new Date(sess.finishedAt).toLocaleString()}
+                        <View style={styles.card}>
+                            <Text style={styles.cardDate}>
+                                {new Date(item.date).toLocaleString()}
                             </Text>
-                            <Text>Mode: PRACTICE (Around the Clock)</Text>
-                            <Text>Player: {sess.playerId ? playerName(sess.playerId) : '—'}</Text>
-                            <Text>Darts thrown: {sess.dartsThrown}</Text>
-                            <Text>Best streak: {sess.bestStreak}</Text>
+                            <StatusText status={match.status} />
+                            <Text>Mode: X01 ({match.startScore})</Text>
+                            <Text>Players: {playersText}</Text>
+                            <Text>Format: Best of {match.bestOfLegs ?? 1} legs</Text>
+                            <Text>Legs recorded: {match.legs.length}</Text>
+
+                            {match.status === 'COMPLETED' && (
+                                <Text>Winner: {winnerId ? playerName(winnerId) : '—'}</Text>
+                            )}
+
+                            {match.status === 'IN_PROGRESS' && !canResume && (
+                                <Text style={styles.warningText}>
+                                    Resume data is unavailable for this entry.
+                                </Text>
+                            )}
+
+                            <View style={styles.actionRow}>
+                                {match.status === 'COMPLETED' && (
+                                    <ActionButton
+                                        label="View details"
+                                        onPress={() => navigation.navigate('MatchDetail', { matchId: match.id })}
+                                    />
+                                )}
+
+                                {match.status === 'IN_PROGRESS' && canResume && (
+                                    <ActionButton
+                                        label="Resume"
+                                        primary
+                                        onPress={() => navigation.navigate('Scoreboard')}
+                                    />
+                                )}
+
+                                {match.status === 'ABANDONED' && (
+                                    <>
+                                        {match.legs.length > 0 && (
+                                            <ActionButton
+                                                label="View details"
+                                                onPress={() => navigation.navigate('MatchDetail', { matchId: match.id })}
+                                            />
+                                        )}
+                                        <ActionButton
+                                            label="Restart"
+                                            primary
+                                            onPress={() => restartMatch(match.id)}
+                                        />
+                                        <ActionButton
+                                            label="Delete"
+                                            destructive
+                                            onPress={() => confirmDelete(match.id)}
+                                        />
+                                    </>
+                                )}
+                            </View>
                         </View>
                     );
                 }}
@@ -136,3 +272,96 @@ export default function HistoryScreen({ navigation }: Props) {
         </View>
     );
 }
+
+function FilterChip(props: { label: string; selected: boolean; onPress: () => void }) {
+    return (
+        <Pressable
+            onPress={props.onPress}
+            style={({ pressed }) => [
+                styles.chip,
+                props.selected && styles.chipSelected,
+                pressed && { opacity: 0.85 },
+            ]}
+        >
+            <Text style={[styles.chipText, props.selected && styles.chipTextSelected]}>
+                {props.label}
+            </Text>
+        </Pressable>
+    );
+}
+
+function StatusText({ status }: { status: MatchStatus }) {
+    const style =
+        status === 'COMPLETED'
+            ? styles.statusCompleted
+            : status === 'IN_PROGRESS'
+                ? styles.statusInProgress
+                : styles.statusAbandoned;
+
+    return <Text style={style}>{STATUS_LABELS[status]}</Text>;
+}
+
+function ActionButton(props: {
+    label: string;
+    onPress: () => void;
+    primary?: boolean;
+    destructive?: boolean;
+}) {
+    return (
+        <Pressable
+            onPress={props.onPress}
+            style={({ pressed }) => [
+                styles.actionButton,
+                props.primary && styles.actionPrimary,
+                props.destructive && styles.actionDestructive,
+                pressed && { opacity: 0.85 },
+            ]}
+        >
+            <Text
+                style={[
+                    styles.actionText,
+                    (props.primary || props.destructive) && styles.actionTextFilled,
+                ]}
+            >
+                {props.label}
+            </Text>
+        </Pressable>
+    );
+}
+
+const styles = StyleSheet.create({
+    screen: { flex: 1, padding: 16, gap: 8 },
+    title: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+    filterLabel: { fontSize: 12, fontWeight: '700', opacity: 0.65, marginTop: 4 },
+    chipRow: { flexDirection: 'row', gap: 8 },
+    chip: {
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#fff',
+    },
+    chipSelected: { backgroundColor: '#111', borderColor: '#111' },
+    chipText: { fontWeight: '700' },
+    chipTextSelected: { color: '#fff' },
+    card: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4, backgroundColor: '#fff' },
+    cardDate: { fontWeight: '700' },
+    statusCompleted: { color: '#16794A', fontWeight: '800' },
+    statusInProgress: { color: '#0A67C7', fontWeight: '800' },
+    statusAbandoned: { color: '#A04400', fontWeight: '800' },
+    warningText: { marginTop: 4, opacity: 0.7 },
+    actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+    actionButton: {
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: '#fff',
+    },
+    actionPrimary: { backgroundColor: '#0A84FF', borderColor: '#0A84FF' },
+    actionDestructive: { backgroundColor: '#C62828', borderColor: '#C62828' },
+    actionText: { fontWeight: '800' },
+    actionTextFilled: { color: '#fff' },
+    emptyList: { flexGrow: 1, justifyContent: 'center' },
+    emptyText: { textAlign: 'center', opacity: 0.65 },
+});

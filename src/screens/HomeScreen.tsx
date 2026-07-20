@@ -10,7 +10,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
     const playersCount = useGameStore(s => s.players.filter(p => !p.isHidden).length);
-    const matchesCount = useGameStore(s => s.matches.length);
+    const matchesCount = useGameStore(s => s.matches.filter(m => m.status === 'COMPLETED').length);
     const hasActiveMatch = useGameStore(s => Boolean(s.currentMatch && s.currentLegState && s.currentLegId));
     const hasActivePractice = useGameStore(
         s => s.aroundTheClockPlayerIds.length > 0 && !s.aroundTheClockWinnerPlayerId

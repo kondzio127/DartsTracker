@@ -4,11 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Tips + UI fix">
+    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/stats.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,7 +55,7 @@
     <urls />
   </component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="CurrentFile" />
+    <option name="selectedTabId" value="AISelfReview" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -111,7 +114,7 @@
       <workItem from="1772835099990" duration="2421000" />
       <workItem from="1773090922383" duration="6225000" />
       <workItem from="1774127682741" duration="6628000" />
-      <workItem from="1784576068097" duration="2701000" />
+      <workItem from="1784576068097" duration="4385000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />
@@ -209,7 +212,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784577151604</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options">
+      <option name="closed" value="true" />
+      <created>1784583309897</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1784583309897</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -236,6 +247,7 @@
     <MESSAGE value="Add turn logic to X01: dart handling, undo/redo, bust and checkout detection, and turn state management" />
     <MESSAGE value="Added flags" />
     <MESSAGE value="Tips + UI fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="Tips + UI fix" />
+    <MESSAGE value="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options" />
   </component>
 </project>

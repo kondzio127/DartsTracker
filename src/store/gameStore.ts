@@ -70,6 +70,7 @@ interface GameState {
 
     startMatch: (config: { playerIds: string[]; startScore: number; bestOfLegs?: number }) => void;
     abandonMatch: () => void;
+    deleteMatch: (matchId: string) => void;
 
     addDart: (segment: number, multiplier: DartMultiplier) => void;
     undoDart: () => void;
@@ -127,7 +128,8 @@ export const useGameStore = create<GameState>()(
             },
 
             startMatch: ({ playerIds, startScore, bestOfLegs }) => {
-                const { matches } = get();
+                const { matches, currentMatch } = get();
+                const now = new Date().toISOString();
                 const matchId = uuid();
                 const legId = uuid();
                 const normalizedBestOfLegs = bestOfLegs ?? 1;
@@ -142,14 +144,29 @@ export const useGameStore = create<GameState>()(
                     mode: 'X01',
                     startScore,
                     bestOfLegs: normalizedBestOfLegs,
-                    createdAt: new Date().toISOString(),
+                    createdAt: now,
+                    status: 'IN_PROGRESS',
                     playerIds,
                     legs: [],
                     legWinsByPlayer: initialLegWins,
                 };
 
+                // Starting another X01 match preserves the previous one as abandoned.
+                let nextMatches = matches.map(match =>
+                    currentMatch && match.id === currentMatch.id && match.status === 'IN_PROGRESS'
+                        ? { ...currentMatch, status: 'ABANDONED' as const, abandonedAt: now }
+                        : match
+                );
+
+                if (currentMatch && !nextMatches.some(match => match.id === currentMatch.id)) {
+                    nextMatches = [
+                        ...nextMatches,
+                        { ...currentMatch, status: 'ABANDONED', abandonedAt: now },
+                    ];
+                }
+
                 set({
-                    matches: [...matches, newMatch],
+                    matches: [...nextMatches, newMatch],
                     currentMatch: newMatch,
                     currentLegState: createInitialLegState(playerIds, startScore),
                     currentLegId: legId,
@@ -158,12 +175,47 @@ export const useGameStore = create<GameState>()(
             },
 
             abandonMatch: () => {
+                const { matches, currentMatch } = get();
+                const abandonedAt = new Date().toISOString();
+
+                let nextMatches = matches;
+                if (currentMatch) {
+                    const abandonedMatch: Match = {
+                        ...currentMatch,
+                        status: 'ABANDONED',
+                        abandonedAt,
+                    };
+
+                    const exists = matches.some(match => match.id === currentMatch.id);
+                    nextMatches = exists
+                        ? matches.map(match => (match.id === currentMatch.id ? abandonedMatch : match))
+                        : [...matches, abandonedMatch];
+                }
+
                 set({
+                    matches: nextMatches,
                     currentMatch: undefined,
                     currentLegState: undefined,
                     currentLegId: undefined,
                     currentLegWins: {},
                 });
+            },
+
+            deleteMatch: matchId => {
+                const { currentMatch } = get();
+                const deletingActiveMatch = currentMatch?.id === matchId;
+
+                set(state => ({
+                    matches: state.matches.filter(match => match.id !== matchId),
+                    ...(deletingActiveMatch
+                        ? {
+                            currentMatch: undefined,
+                            currentLegState: undefined,
+                            currentLegId: undefined,
+                            currentLegWins: {},
+                        }
+                        : {}),
+                }));
             },
 
             addDart: (segment, multiplier) => {
@@ -323,6 +375,8 @@ export const useGameStore = create<GameState>()(
 
                 const updatedMatch: Match = {
                     ...currentMatch,
+                    status: 'IN_PROGRESS',
+                    abandonedAt: undefined,
                     legs: updatedLegs,
                     legWinsByPlayer: legWins,
                 };
@@ -333,7 +387,12 @@ export const useGameStore = create<GameState>()(
                 const matchFinished = updatedMatch.playerIds.some(pid => (legWins[pid] ?? 0) >= legsToWin);
 
                 if (matchFinished) {
-                    const finishedMatch: Match = { ...updatedMatch, finishedAt: new Date().toISOString() };
+                    const finishedMatch: Match = {
+                        ...updatedMatch,
+                        status: 'COMPLETED',
+                        finishedAt: new Date().toISOString(),
+                        abandonedAt: undefined,
+                    };
                     set({
                         matches: [...otherMatches, finishedMatch],
                         currentMatch: undefined,
@@ -450,13 +509,13 @@ export const useGameStore = create<GameState>()(
         }),
         {
             name: 'darts-tracker-store-v1',
-            version: 2,
+            version: 3,
             storage: createJSONStorage(() => AsyncStorage),
             migrate: (persistedState, version) => {
-                const state = persistedState as Partial<GameState>;
+                let state = persistedState as Partial<GameState>;
 
                 if (version < 2) {
-                    return {
+                    state = {
                         ...state,
                         currentMatch: state.currentMatch ?? undefined,
                         currentLegState: state.currentLegState ?? undefined,
@@ -468,7 +527,43 @@ export const useGameStore = create<GameState>()(
                         aroundTheClockDartInTurn: state.aroundTheClockDartInTurn ?? 0,
                         aroundTheClockStartedAt: state.aroundTheClockStartedAt ?? undefined,
                         aroundTheClockWinnerPlayerId: state.aroundTheClockWinnerPlayerId ?? undefined,
-                    } as GameState;
+                    };
+                }
+
+                if (version < 3) {
+                    const canResumeCurrentMatch = Boolean(
+                        state.currentMatch && state.currentLegState && state.currentLegId
+                    );
+                    const activeMatchId = canResumeCurrentMatch ? state.currentMatch?.id : undefined;
+
+                    let migratedMatches = (state.matches ?? []).map(match => ({
+                        ...match,
+                        status: match.finishedAt
+                            ? 'COMPLETED' as const
+                            : match.id === activeMatchId
+                                ? 'IN_PROGRESS' as const
+                                : 'ABANDONED' as const,
+                    }));
+
+                    let migratedCurrentMatch = canResumeCurrentMatch && state.currentMatch
+                        ? { ...state.currentMatch, status: 'IN_PROGRESS' as const }
+                        : undefined;
+
+                    if (
+                        migratedCurrentMatch &&
+                        !migratedMatches.some(match => match.id === migratedCurrentMatch?.id)
+                    ) {
+                        migratedMatches = [...migratedMatches, migratedCurrentMatch];
+                    }
+
+                    state = {
+                        ...state,
+                        matches: migratedMatches,
+                        currentMatch: migratedCurrentMatch,
+                        currentLegState: canResumeCurrentMatch ? state.currentLegState : undefined,
+                        currentLegId: canResumeCurrentMatch ? state.currentLegId : undefined,
+                        currentLegWins: canResumeCurrentMatch ? (state.currentLegWins ?? {}) : {},
+                    };
                 }
 
                 return state as GameState;

@@ -3,6 +3,7 @@
 export type DartMultiplier = 1 | 2 | 3;
 
 export type GameMode = 'X01' | 'AROUND_THE_CLOCK';
+export type MatchStatus = 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
 
 export interface Player {
     id: string;
@@ -20,7 +21,9 @@ export interface Match {
     bestOfLegs?: number;
     bestOfSets?: number;
     createdAt: string;
+    status: MatchStatus;
     finishedAt?: string;
+    abandonedAt?: string;
 
     playerIds: string[];
     legs: Leg[];

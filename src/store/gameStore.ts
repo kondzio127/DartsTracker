@@ -3,7 +3,14 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-import { Player, Match, Leg, AroundTheClockSession, DartMultiplier } from '../types/domain';
+import {
+    Player,
+    Match,
+    Leg,
+    AroundTheClockSession,
+    AroundTheClockPlayerResult,
+    DartMultiplier,
+} from '../types/domain';
 import {
     X01LegState,
     createInitialLegState,
@@ -17,6 +24,8 @@ import {
     AroundTheClockState,
     createInitialAroundTheClockState,
     applyAroundTheClockDart,
+    cloneAroundTheClockState,
+    getCompletedTargetCount,
 } from '../engine/aroundTheClock';
 
 const uuid = () => Math.random().toString(36).slice(2);
@@ -47,6 +56,45 @@ function inferDartFromScore(score: number) {
     return { segment: 0, multiplier: 1 as const, score: 0 };
 }
 
+interface AroundTheClockUndoSnapshot {
+    statesByPlayer: Record<string, AroundTheClockState>;
+    currentPlayerIndex: number;
+    dartInTurn: number;
+    winnerPlayerId?: string;
+    sessionsLength: number;
+}
+
+function cloneAroundTheClockStates(
+    states: Record<string, AroundTheClockState>
+): Record<string, AroundTheClockState> {
+    const cloned: Record<string, AroundTheClockState> = {};
+
+    for (const [playerId, state] of Object.entries(states)) {
+        cloned[playerId] = cloneAroundTheClockState(state);
+    }
+
+    return cloned;
+}
+
+function buildAroundTheClockResults(
+    playerIds: string[],
+    states: Record<string, AroundTheClockState>
+): AroundTheClockPlayerResult[] {
+    return playerIds.flatMap(playerId => {
+        const state = states[playerId];
+        if (!state) return [];
+
+        return [{
+            playerId,
+            completed: state.isFinished,
+            targetReached: getCompletedTargetCount(state),
+            dartsThrown: state.dartsThrown,
+            bestStreak: state.bestStreak,
+            hitsByNumber: { ...state.hitsByNumber },
+        }];
+    });
+}
+
 interface GameState {
     players: Player[];
     matches: Match[];
@@ -63,6 +111,7 @@ interface GameState {
     aroundTheClockDartInTurn: number;
     aroundTheClockStartedAt?: string;
     aroundTheClockWinnerPlayerId?: string;
+    aroundTheClockUndoStack: AroundTheClockUndoSnapshot[];
 
     addPlayer: (name: string, nickname?: string, flag?: string) => Player;
     updatePlayer: (playerId: string, updates: Partial<Omit<Player, 'id' | 'createdAt'>>) => void;
@@ -80,6 +129,7 @@ interface GameState {
 
     startAroundTheClock: (playerIds: string[], maxTarget?: number) => void;
     registerAroundTheClockDart: (hit: boolean) => void;
+    undoAroundTheClockDart: () => void;
     resetAroundTheClock: () => void;
 }
 
@@ -101,6 +151,7 @@ export const useGameStore = create<GameState>()(
             aroundTheClockDartInTurn: 0,
             aroundTheClockStartedAt: undefined,
             aroundTheClockWinnerPlayerId: undefined,
+            aroundTheClockUndoStack: [],
 
             addPlayer: (name, nickname, flag) => {
                 const newPlayer: Player = {
@@ -433,6 +484,7 @@ export const useGameStore = create<GameState>()(
                     aroundTheClockDartInTurn: 0,
                     aroundTheClockStartedAt: new Date().toISOString(),
                     aroundTheClockWinnerPlayerId: undefined,
+                    aroundTheClockUndoStack: [],
                 });
             },
 
@@ -444,6 +496,7 @@ export const useGameStore = create<GameState>()(
                     aroundTheClockDartInTurn,
                     aroundTheClockWinnerPlayerId,
                     aroundTheClockSessions,
+                    aroundTheClockUndoStack,
                 } = get();
 
                 if (aroundTheClockWinnerPlayerId) return;
@@ -453,47 +506,78 @@ export const useGameStore = create<GameState>()(
                 const currentState = aroundTheClockStatesByPlayer[currentPlayerId];
                 if (!currentState) return;
 
+                const snapshot: AroundTheClockUndoSnapshot = {
+                    statesByPlayer: cloneAroundTheClockStates(aroundTheClockStatesByPlayer),
+                    currentPlayerIndex: aroundTheClockCurrentPlayerIndex,
+                    dartInTurn: aroundTheClockDartInTurn,
+                    winnerPlayerId: aroundTheClockWinnerPlayerId,
+                    sessionsLength: aroundTheClockSessions.length,
+                };
+                const nextUndoStack = [...aroundTheClockUndoStack, snapshot].slice(-500);
+
                 const updatedPlayerState = applyAroundTheClockDart(currentState, hit);
-                const nextStates = { ...aroundTheClockStatesByPlayer, [currentPlayerId]: updatedPlayerState };
+                const nextStates = {
+                    ...aroundTheClockStatesByPlayer,
+                    [currentPlayerId]: updatedPlayerState,
+                };
 
                 if (updatedPlayerState.isFinished) {
-                    const totalDarts = Object.values(nextStates).reduce((sum, s) => sum + (s?.dartsThrown ?? 0), 0);
-                    const bestStreakOverall = Math.max(...Object.values(nextStates).map(s => s?.bestStreak ?? 0), 0);
                     const finishedAt = new Date().toISOString();
                     const createdAt = get().aroundTheClockStartedAt ?? finishedAt;
-
                     const session: AroundTheClockSession = {
                         id: uuid(),
-                        playerId: currentPlayerId,
+                        playerIds: [...aroundTheClockPlayerIds],
+                        winnerPlayerId: currentPlayerId,
                         createdAt,
                         finishedAt,
                         maxTarget: updatedPlayerState.maxTarget,
-                        dartsThrown: totalDarts,
-                        bestStreak: bestStreakOverall,
+                        results: buildAroundTheClockResults(aroundTheClockPlayerIds, nextStates),
                     };
 
                     set({
                         aroundTheClockStatesByPlayer: nextStates,
                         aroundTheClockWinnerPlayerId: currentPlayerId,
                         aroundTheClockSessions: [...aroundTheClockSessions, session],
+                        aroundTheClockUndoStack: nextUndoStack,
                     });
                     return;
                 }
 
                 const nextDartInTurn = aroundTheClockDartInTurn + 1;
                 if (nextDartInTurn >= DARTS_PER_TURN) {
-                    const nextIndex = (aroundTheClockCurrentPlayerIndex + 1) % aroundTheClockPlayerIds.length;
+                    const nextIndex =
+                        (aroundTheClockCurrentPlayerIndex + 1) % aroundTheClockPlayerIds.length;
                     set({
                         aroundTheClockStatesByPlayer: nextStates,
                         aroundTheClockCurrentPlayerIndex: nextIndex,
                         aroundTheClockDartInTurn: 0,
+                        aroundTheClockUndoStack: nextUndoStack,
                     });
                 } else {
                     set({
                         aroundTheClockStatesByPlayer: nextStates,
                         aroundTheClockDartInTurn: nextDartInTurn,
+                        aroundTheClockUndoStack: nextUndoStack,
                     });
                 }
+            },
+
+            undoAroundTheClockDart: () => {
+                const {
+                    aroundTheClockUndoStack,
+                    aroundTheClockSessions,
+                } = get();
+                const snapshot = aroundTheClockUndoStack[aroundTheClockUndoStack.length - 1];
+                if (!snapshot) return;
+
+                set({
+                    aroundTheClockStatesByPlayer: cloneAroundTheClockStates(snapshot.statesByPlayer),
+                    aroundTheClockCurrentPlayerIndex: snapshot.currentPlayerIndex,
+                    aroundTheClockDartInTurn: snapshot.dartInTurn,
+                    aroundTheClockWinnerPlayerId: snapshot.winnerPlayerId,
+                    aroundTheClockSessions: aroundTheClockSessions.slice(0, snapshot.sessionsLength),
+                    aroundTheClockUndoStack: aroundTheClockUndoStack.slice(0, -1),
+                });
             },
 
             resetAroundTheClock: () => {
@@ -504,12 +588,13 @@ export const useGameStore = create<GameState>()(
                     aroundTheClockDartInTurn: 0,
                     aroundTheClockStartedAt: undefined,
                     aroundTheClockWinnerPlayerId: undefined,
+                    aroundTheClockUndoStack: [],
                 });
             },
         }),
         {
             name: 'darts-tracker-store-v1',
-            version: 3,
+            version: 4,
             storage: createJSONStorage(() => AsyncStorage),
             migrate: (persistedState, version) => {
                 let state = persistedState as Partial<GameState>;
@@ -566,6 +651,57 @@ export const useGameStore = create<GameState>()(
                     };
                 }
 
+
+                if (version < 4) {
+                    const migratedSessions = (state.aroundTheClockSessions ?? []).map(session => {
+                        const legacySession = session as AroundTheClockSession & {
+                            playerId?: string;
+                            dartsThrown?: number;
+                            bestStreak?: number;
+                        };
+
+                        if (
+                            Array.isArray(legacySession.playerIds) &&
+                            Array.isArray(legacySession.results)
+                        ) {
+                            return legacySession;
+                        }
+
+                        const legacyPlayerId = legacySession.playerId;
+                        const maxTarget = legacySession.maxTarget ?? 20;
+
+                        return {
+                            id: legacySession.id,
+                            playerIds: legacyPlayerId ? [legacyPlayerId] : [],
+                            winnerPlayerId: legacyPlayerId,
+                            createdAt: legacySession.createdAt,
+                            finishedAt: legacySession.finishedAt,
+                            maxTarget,
+                            results: legacyPlayerId
+                                ? [{
+                                    playerId: legacyPlayerId,
+                                    completed: true,
+                                    targetReached: maxTarget,
+                                    dartsThrown: legacySession.dartsThrown ?? 0,
+                                    bestStreak: legacySession.bestStreak ?? 0,
+                                    hitsByNumber: {},
+                                }]
+                                : [],
+                        } satisfies AroundTheClockSession;
+                    });
+
+                    state = {
+                        ...state,
+                        aroundTheClockSessions: migratedSessions,
+                        aroundTheClockUndoStack: [],
+                    };
+                }
+
+                state = {
+                    ...state,
+                    aroundTheClockUndoStack: state.aroundTheClockUndoStack ?? [],
+                };
+
                 return state as GameState;
             },
             partialize: state => ({
@@ -582,6 +718,7 @@ export const useGameStore = create<GameState>()(
                 aroundTheClockDartInTurn: state.aroundTheClockDartInTurn,
                 aroundTheClockStartedAt: state.aroundTheClockStartedAt,
                 aroundTheClockWinnerPlayerId: state.aroundTheClockWinnerPlayerId,
+                aroundTheClockUndoStack: state.aroundTheClockUndoStack,
             }),
         }
     )

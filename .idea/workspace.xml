@@ -5,13 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options">
+      <change afterPath="$PROJECT_DIR$/src/screens/AroundTheClockDetailScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/engine/aroundTheClock.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/engine/aroundTheClock.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockSummaryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockSummaryScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/store/gameStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/store/gameStore.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/types/domain.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/types/domain.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/stats.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,6 +91,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\konra\Projects\darts-tracker\src\screens" />
       <recent name="C:\Users\konra\Projects\darts-tracker\src\navigation" />
       <recent name="C:\Users\konra\Projects\darts-tracker\src" />
     </key>
@@ -115,6 +118,8 @@
       <workItem from="1773090922383" duration="6225000" />
       <workItem from="1774127682741" duration="6628000" />
       <workItem from="1784576068097" duration="4385000" />
+      <workItem from="1786289862624" duration="407000" />
+      <workItem from="1786910034805" duration="1201000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial navigation, state management, and basic screens for Darts Tracker MVP">
       <option name="closed" value="true" />

@@ -86,7 +86,7 @@ export default function HistoryScreen({ navigation }: Props) {
             }
 
             const session = aroundTheClockSessions.find(s => s.id === item.id);
-            return session?.playerId === playerFilter;
+            return session?.playerIds.includes(playerFilter) ?? false;
         });
 
         filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -183,16 +183,35 @@ export default function HistoryScreen({ navigation }: Props) {
                         const session = aroundTheClockSessions.find(s => s.id === item.id);
                         if (!session) return null;
 
+                        const winnerName = session.winnerPlayerId
+                            ? playerName(session.winnerPlayerId)
+                            : '—';
+                        const totalDarts = session.results.reduce(
+                            (sum, result) => sum + result.dartsThrown,
+                            0
+                        );
+                        const playersText = session.playerIds.map(playerName).join(', ') || '—';
+
                         return (
                             <View style={styles.card}>
                                 <Text style={styles.cardDate}>
                                     {new Date(session.finishedAt).toLocaleString()}
                                 </Text>
                                 <Text style={styles.statusCompleted}>Completed practice</Text>
-                                <Text>Around the Clock</Text>
-                                <Text>Player: {session.playerId ? playerName(session.playerId) : '—'}</Text>
-                                <Text>Darts thrown: {session.dartsThrown}</Text>
-                                <Text>Best streak: {session.bestStreak}</Text>
+                                <Text>Around the Clock · 1–{session.maxTarget}</Text>
+                                <Text>Players: {playersText}</Text>
+                                <Text>Winner: {winnerName}</Text>
+                                <Text>Total darts: {totalDarts}</Text>
+
+                                <View style={styles.actionRow}>
+                                    <ActionButton
+                                        label="View details"
+                                        onPress={() => navigation.navigate(
+                                            'AroundTheClockDetail',
+                                            { sessionId: session.id }
+                                        )}
+                                    />
+                                </View>
                             </View>
                         );
                     }

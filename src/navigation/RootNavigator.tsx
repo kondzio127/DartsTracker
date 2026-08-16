@@ -9,6 +9,7 @@ import ScoreboardScreen from '../screens/ScoreboardScreen';
 import MatchSummaryScreen from '../screens/MatchSummaryScreen';
 import AroundTheClockScreen from '../screens/AroundTheClockScreen';
 import AroundTheClockSummaryScreen from '../screens/AroundTheClockSummaryScreen';
+import AroundTheClockDetailScreen from '../screens/AroundTheClockDetailScreen';
 import PlayersScreen from '../screens/PlayersScreen';
 import PlayerFormScreen from '../screens/PlayerFormScreen';
 import PlayerStatsScreen from '../screens/PlayerStatsScreen';
@@ -23,6 +24,7 @@ export type RootStackParamList = {
     MatchSummary: { matchId: string };
     AroundTheClock: undefined;
     AroundTheClockSummary: undefined;
+    AroundTheClockDetail: { sessionId: string };
 
     Players: undefined;
     PlayerForm: { playerId?: string } | undefined;
@@ -52,6 +54,11 @@ export default function RootNavigator() {
                 <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'History' }} />
                 <Stack.Screen name="MatchDetail" component={MatchDetailScreen} options={{ title: 'Match' }} />
                 <Stack.Screen name="LegDetail" component={LegDetailScreen} options={{ title: 'Leg' }} />
+                <Stack.Screen
+                    name="AroundTheClockDetail"
+                    component={AroundTheClockDetailScreen}
+                    options={{ title: 'Practice Session' }}
+                />
 
                 <Stack.Screen
                     name="Scoreboard"

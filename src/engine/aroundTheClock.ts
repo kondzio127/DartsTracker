@@ -1,26 +1,28 @@
 // src/engine/aroundTheClock.ts
 
 export interface AroundTheClockState {
-    currentTarget: number;                    // current number to hit (1..maxTarget)
-    maxTarget: number;                        // usually 20
+    currentTarget: number;
+    maxTarget: number;
     dartsThrown: number;
-    hitsByNumber: Record<number, number>;     // how many times each number was hit
-    currentStreak: number;                    // consecutive hits
-    bestStreak: number;                       // best streak of consecutive hits
+    hitsByNumber: Record<number, number>;
+    currentStreak: number;
+    bestStreak: number;
     isFinished: boolean;
 }
 
 export function createInitialAroundTheClockState(
     maxTarget: number = 20
 ): AroundTheClockState {
+    const normalizedMaxTarget = Math.max(1, Math.floor(maxTarget));
     const hitsByNumber: Record<number, number> = {};
-    for (let i = 1; i <= maxTarget; i++) {
-        hitsByNumber[i] = 0;
+
+    for (let target = 1; target <= normalizedMaxTarget; target += 1) {
+        hitsByNumber[target] = 0;
     }
 
     return {
         currentTarget: 1,
-        maxTarget,
+        maxTarget: normalizedMaxTarget,
         dartsThrown: 0,
         hitsByNumber,
         currentStreak: 0,
@@ -29,48 +31,50 @@ export function createInitialAroundTheClockState(
     };
 }
 
+export function cloneAroundTheClockState(
+    state: AroundTheClockState
+): AroundTheClockState {
+    return {
+        ...state,
+        hitsByNumber: { ...state.hitsByNumber },
+    };
+}
+
 export function applyAroundTheClockDart(
     state: AroundTheClockState,
     hit: boolean
 ): AroundTheClockState {
-    if (state.isFinished) {
-        return state;
+    if (state.isFinished) return state;
+
+    const nextState = cloneAroundTheClockState(state);
+    nextState.dartsThrown += 1;
+
+    if (!hit) {
+        nextState.currentStreak = 0;
+        return nextState;
     }
 
-    const newState: AroundTheClockState = {
-        ...state,
-        hitsByNumber: { ...state.hitsByNumber },
-    };
+    nextState.hitsByNumber[state.currentTarget] =
+        (nextState.hitsByNumber[state.currentTarget] ?? 0) + 1;
+    nextState.currentStreak += 1;
+    nextState.bestStreak = Math.max(nextState.bestStreak, nextState.currentStreak);
 
-    newState.dartsThrown += 1;
-
-    if (hit) {
-        newState.hitsByNumber[state.currentTarget] += 1;
-        newState.currentStreak += 1;
-        if (newState.currentStreak > newState.bestStreak) {
-            newState.bestStreak = newState.currentStreak;
-        }
-
-        // Move to next target if we hit the current one
-        if (state.currentTarget >= state.maxTarget) {
-            newState.isFinished = true;
-        } else {
-            newState.currentTarget = state.currentTarget + 1;
-        }
+    if (state.currentTarget >= state.maxTarget) {
+        nextState.isFinished = true;
     } else {
-        // Miss breaks streak
-        newState.currentStreak = 0;
+        nextState.currentTarget = state.currentTarget + 1;
     }
 
-    return newState;
+    return nextState;
+}
+
+export function getCompletedTargetCount(state: AroundTheClockState): number {
+    if (state.isFinished) return state.maxTarget;
+    return Math.max(0, Math.min(state.maxTarget, state.currentTarget - 1));
 }
 
 export function getAverageDartsPerNumber(state: AroundTheClockState): number {
-    if (state.maxTarget <= 0) return 0;
-    if (!state.isFinished) {
-        const numbersCompleted = state.currentTarget - 1;
-        const denom = numbersCompleted > 0 ? numbersCompleted : 1;
-        return state.dartsThrown / denom;
-    }
-    return state.dartsThrown / state.maxTarget;
+    const completedTargets = getCompletedTargetCount(state);
+    if (completedTargets === 0) return 0;
+    return state.dartsThrown / completedTargets;
 }

@@ -62,12 +62,22 @@ export interface Visit {
     createdAt: string;
 }
 
+export interface AroundTheClockPlayerResult {
+    playerId: string;
+    completed: boolean;
+    /** Highest target completed when the session ended. */
+    targetReached: number;
+    dartsThrown: number;
+    bestStreak: number;
+    hitsByNumber: Record<number, number>;
+}
+
 export interface AroundTheClockSession {
     id: string;
-    playerId?: string;
+    playerIds: string[];
+    winnerPlayerId?: string;
     createdAt: string;
     finishedAt: string;
     maxTarget: number;
-    dartsThrown: number;
-    bestStreak: number;
+    results: AroundTheClockPlayerResult[];
 }

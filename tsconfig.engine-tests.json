@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": ".",
+    "outDir": "build/engine-tests",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/types/domain.ts",
+    "src/engine/x01.ts",
+    "src/engine/aroundTheClock.ts",
+    "src/theme/themes.ts",
+    "src/theme/themeStore.ts",
+    "src/store/gameStore.ts"
+  ]
+}

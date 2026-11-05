@@ -1,5 +1,8 @@
 # Milestone 1: tests and themes
 
+This is the historical Home-only milestone. App-wide theming is documented in
+[Milestone 1.1](milestone-1-1.md).
+
 The current X01 and Around the Clock engines and game-store persistence format
 are unchanged. The app remains offline-first; no SQLite, server or sync is added.
 

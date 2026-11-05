@@ -1,13 +1,11 @@
+import { useAppAlert } from '../theme/useAppAlert';
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 import React, { useMemo, useState } from 'react';
-import {
-    View,
-    Text,
-    FlatList,
-    Pressable,
-    ScrollView,
-    Alert,
-    StyleSheet,
-} from 'react-native';
+import { View, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -32,6 +30,9 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 };
 
 export default function HistoryScreen({ navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
+    const showAlert = useAppAlert();
     const matches = useGameStore(s => s.matches);
     const players = useGameStore(s => s.players);
     const aroundTheClockSessions = useGameStore(s => s.aroundTheClockSessions);
@@ -106,7 +107,7 @@ export default function HistoryScreen({ navigation }: Props) {
     };
 
     const confirmDelete = (matchId: string) => {
-        Alert.alert(
+        showAlert(
             'Delete match?',
             'This removes the match permanently from history.',
             [
@@ -125,7 +126,12 @@ export default function HistoryScreen({ navigation }: Props) {
             <Text style={styles.title}>History</Text>
 
             <Text style={styles.filterLabel}>Game type</Text>
-            <View style={styles.chipRow}>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
+                contentContainerStyle={styles.chipRow}
+            >
                 {(['ALL', 'X01', 'PRACTICE'] as ModeFilter[]).map(value => (
                     <FilterChip
                         key={value}
@@ -134,43 +140,50 @@ export default function HistoryScreen({ navigation }: Props) {
                         onPress={() => setMode(value)}
                     />
                 ))}
-            </View>
+            </ScrollView>
 
             <Text style={styles.filterLabel}>Status</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.chipRow}>
-                    {(['COMPLETED', 'IN_PROGRESS', 'ABANDONED', 'ALL'] as StatusFilter[]).map(value => (
-                        <FilterChip
-                            key={value}
-                            label={STATUS_LABELS[value]}
-                            selected={status === value}
-                            onPress={() => setStatus(value)}
-                        />
-                    ))}
-                </View>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
+                contentContainerStyle={styles.chipRow}
+            >
+                {(['COMPLETED', 'IN_PROGRESS', 'ABANDONED', 'ALL'] as StatusFilter[]).map(value => (
+                    <FilterChip
+                        key={value}
+                        label={STATUS_LABELS[value]}
+                        selected={status === value}
+                        onPress={() => setStatus(value)}
+                    />
+                ))}
             </ScrollView>
 
             <Text style={styles.filterLabel}>Player</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.chipRow}>
-                    <FilterChip
-                        label="All players"
-                        selected={playerFilter === 'ALL'}
-                        onPress={() => setPlayerFilter('ALL')}
-                    />
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
+                contentContainerStyle={styles.chipRow}
+            >
+                <FilterChip
+                    label="All players"
+                    selected={playerFilter === 'ALL'}
+                    onPress={() => setPlayerFilter('ALL')}
+                />
 
-                    {activePlayers.map(player => (
-                        <FilterChip
-                            key={player.id}
-                            label={player.name}
-                            selected={playerFilter === player.id}
-                            onPress={() => setPlayerFilter(player.id)}
-                        />
-                    ))}
-                </View>
+                {activePlayers.map(player => (
+                    <FilterChip
+                        key={player.id}
+                        label={player.name}
+                        selected={playerFilter === player.id}
+                        onPress={() => setPlayerFilter(player.id)}
+                    />
+                ))}
             </ScrollView>
 
             <FlatList
+                style={styles.list}
                 data={items}
                 keyExtractor={item => `${item.kind}:${item.id}`}
                 contentContainerStyle={items.length === 0 ? styles.emptyList : undefined}
@@ -193,7 +206,7 @@ export default function HistoryScreen({ navigation }: Props) {
                         const playersText = session.playerIds.map(playerName).join(', ') || '—';
 
                         return (
-                            <View style={styles.card}>
+                            <ThemedCard style={styles.card}>
                                 <Text style={styles.cardDate}>
                                     {new Date(session.finishedAt).toLocaleString()}
                                 </Text>
@@ -212,7 +225,7 @@ export default function HistoryScreen({ navigation }: Props) {
                                         )}
                                     />
                                 </View>
-                            </View>
+                            </ThemedCard>
                         );
                     }
 
@@ -227,7 +240,7 @@ export default function HistoryScreen({ navigation }: Props) {
                         Boolean(currentLegState && currentLegId);
 
                     return (
-                        <View style={styles.card}>
+                        <ThemedCard style={styles.card}>
                             <Text style={styles.cardDate}>
                                 {new Date(item.date).toLocaleString()}
                             </Text>
@@ -284,7 +297,7 @@ export default function HistoryScreen({ navigation }: Props) {
                                     </>
                                 )}
                             </View>
-                        </View>
+                        </ThemedCard>
                     );
                 }}
             />
@@ -293,16 +306,20 @@ export default function HistoryScreen({ navigation }: Props) {
 }
 
 function FilterChip(props: { label: string; selected: boolean; onPress: () => void }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
         <Pressable
             onPress={props.onPress}
+            accessibilityRole="button"
+            accessibilityState={{ selected: props.selected }}
             style={({ pressed }) => [
                 styles.chip,
                 props.selected && styles.chipSelected,
                 pressed && { opacity: 0.85 },
             ]}
         >
-            <Text style={[styles.chipText, props.selected && styles.chipTextSelected]}>
+            <Text numberOfLines={1} style={[styles.chipText, props.selected && styles.chipTextSelected]}>
                 {props.label}
             </Text>
         </Pressable>
@@ -310,6 +327,8 @@ function FilterChip(props: { label: string; selected: boolean; onPress: () => vo
 }
 
 function StatusText({ status }: { status: MatchStatus }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const style =
         status === 'COMPLETED'
             ? styles.statusCompleted
@@ -326,6 +345,8 @@ function ActionButton(props: {
     primary?: boolean;
     destructive?: boolean;
 }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
         <Pressable
             onPress={props.onPress}
@@ -339,7 +360,8 @@ function ActionButton(props: {
             <Text
                 style={[
                     styles.actionText,
-                    (props.primary || props.destructive) && styles.actionTextFilled,
+                    props.primary && styles.actionTextFilled,
+                    props.destructive && { color: theme.onDanger },
                 ]}
             >
                 {props.label}
@@ -348,39 +370,45 @@ function ActionButton(props: {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
     screen: { flex: 1, padding: 16, gap: 8 },
     title: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
-    filterLabel: { fontSize: 12, fontWeight: '700', opacity: 0.65, marginTop: 4 },
-    chipRow: { flexDirection: 'row', gap: 8 },
-    chip: {
+    filterLabel: { fontSize: 12, fontWeight: '700', color: theme.muted, marginTop: 4 },
+    // Horizontal filter viewports must not consume the list's vertical space.
+    filterScroll: { flexGrow: 0, flexShrink: 0 },
+    chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 },
+    list: { flex: 1 },
+    chip: { borderColor: theme.border,
+        alignSelf: 'center',
+        flexShrink: 0,
+        justifyContent: 'center',
         borderWidth: 1,
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 8,
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
     },
-    chipSelected: { backgroundColor: '#111', borderColor: '#111' },
+    chipSelected: { backgroundColor: theme.accent, borderColor: theme.accent },
     chipText: { fontWeight: '700' },
-    chipTextSelected: { color: '#fff' },
-    card: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4, backgroundColor: '#fff' },
+    chipTextSelected: { color: theme.onAccent },
+    card: { borderColor: theme.border, borderWidth: 1, borderRadius: 12, padding: 12, gap: 4, backgroundColor: theme.surface },
     cardDate: { fontWeight: '700' },
-    statusCompleted: { color: '#16794A', fontWeight: '800' },
-    statusInProgress: { color: '#0A67C7', fontWeight: '800' },
-    statusAbandoned: { color: '#A04400', fontWeight: '800' },
-    warningText: { marginTop: 4, opacity: 0.7 },
+    statusCompleted: { color: theme.success, fontWeight: '800' },
+    statusInProgress: { color: theme.accent, fontWeight: '800' },
+    statusAbandoned: { color: theme.warning, fontWeight: '800' },
+    warningText: { marginTop: 4, color: theme.muted },
     actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-    actionButton: {
+    actionButton: { borderColor: theme.border,
         borderWidth: 1,
         borderRadius: 999,
         paddingHorizontal: 12,
         paddingVertical: 8,
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
     },
-    actionPrimary: { backgroundColor: '#0A84FF', borderColor: '#0A84FF' },
-    actionDestructive: { backgroundColor: '#C62828', borderColor: '#C62828' },
+    actionPrimary: { backgroundColor: theme.accent, borderColor: theme.accent },
+    actionDestructive: { backgroundColor: theme.danger, borderColor: theme.danger },
     actionText: { fontWeight: '800' },
-    actionTextFilled: { color: '#fff' },
+    actionTextFilled: { color: theme.onAccent },
     emptyList: { flexGrow: 1, justifyContent: 'center' },
-    emptyText: { textAlign: 'center', opacity: 0.65 },
+    emptyText: { textAlign: 'center', color: theme.muted },
 });

@@ -1,5 +1,10 @@
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 import React from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
+import { View, FlatList, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -8,12 +13,10 @@ import { getFlagEmoji, getCountryName } from '../utils/flags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Players'>;
 
-const TEXT = '#111111';
-const MUTED = '#6B7280';
-const BORDER = '#E5E7EB';
-const BLUE = '#0A84FF';
 
 export default function PlayersScreen({ navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const players = useGameStore(s => s.players);
     const togglePlayerHidden = useGameStore(s => s.togglePlayerHidden);
 
@@ -27,8 +30,8 @@ export default function PlayersScreen({ navigation }: Props) {
     };
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 12 }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: TEXT }}>Players</Text>
+        <View style={{ flex: 1, backgroundColor: theme.background, padding: 16, gap: 12 }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: theme.foreground }}>Players</Text>
 
             <AppButton label="Add player" onPress={() => navigation.navigate('PlayerForm')} />
 
@@ -82,23 +85,22 @@ export default function PlayersScreen({ navigation }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
     card: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 12,
         padding: 12,
         gap: 8,
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
     },
     name: {
         fontSize: 16,
         fontWeight: '800',
-        color: TEXT,
+        color: theme.foreground,
     },
     meta: {
-        opacity: 0.8,
-        color: MUTED,
+        color: theme.muted,
     },
     actions: {
         flexDirection: 'row',
@@ -109,20 +111,20 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 999,
-        backgroundColor: '#fff',
+        backgroundColor: theme.surface,
     },
     buttonText: {
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '700',
     },
     blueButton: {
-        borderColor: BLUE,
-        backgroundColor: BLUE,
+        borderColor: theme.accent,
+        backgroundColor: theme.accent,
     },
     blueButtonText: {
-        color: '#fff',
+        color: theme.onAccent,
         fontWeight: '800',
     },
 });

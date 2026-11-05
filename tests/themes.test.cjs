@@ -6,6 +6,7 @@ const {
   THEMES,
   getTheme,
 } = require('../build/engine-tests/src/theme/themes.js');
+const { buttonColors, navigationColors } = require('../build/engine-tests/src/theme/themeColors.js');
 
 function relativeLuminance(hex) {
   const channels = hex.slice(1).match(/.{2}/g).map(part => parseInt(part, 16) / 255);
@@ -25,8 +26,48 @@ test('Neon Arena is the default and all four themes exist', () => {
   assert.equal(THEMES.clubhousePaper.isDark, false);
 });
 
+test('all themes keep content, statuses and disabled controls readable', () => {
+  for (const id of THEME_IDS) {
+    const t = getTheme(id);
+    const pairs = [
+      [t.foreground, t.background], [t.foreground, t.surface], [t.foreground, t.surfaceRaised],
+      [t.muted, t.background], [t.muted, t.surface], [t.muted, t.surfaceRaised],
+      [t.foreground, t.selectedSurface], [t.muted, t.selectedSurface],
+      [t.accent, t.selectedSurface],
+      [t.success, t.surface], [t.danger, t.surface], [t.warning, t.surface],
+      [t.accent, t.surface], [t.onSuccess, t.success], [t.onDanger, t.danger],
+      [t.disabledForeground, t.disabledSurface],
+    ];
+    for (const [foreground, background] of pairs) {
+      assert.ok(contrastRatio(foreground, background) >= 4.5, `${id}: ${foreground} on ${background}`);
+    }
+  }
+});
+
+test('button states and navigation map to the selected theme', () => {
+  for (const id of THEME_IDS) {
+    const t = getTheme(id);
+    const nav = navigationColors(t);
+    assert.equal(nav.background, t.background);
+    assert.equal(nav.card, t.surface);
+    assert.equal(nav.text, t.foreground);
+    assert.equal(nav.primary, t.accent);
+    for (const variant of ['primary', 'secondary', 'ghost', 'danger']) {
+      for (const disabled of [false, true]) {
+        const c = buttonColors(t, variant, disabled);
+        assert.ok(contrastRatio(c.foreground, c.background === 'transparent' ? t.background : c.background) >= 4.5);
+        if (disabled) assert.equal(c.foreground, t.disabledForeground);
+      }
+    }
+  }
+});
+
 test('every theme has valid semantic hex tokens and readable primary button text', () => {
-  const colors = ['background', 'surface', 'surfaceRaised', 'foreground', 'muted', 'accent', 'onAccent', 'border'];
+  const colors = [
+    'background', 'surface', 'surfaceRaised', 'foreground', 'muted', 'accent', 'onAccent', 'border',
+    'success', 'onSuccess', 'danger', 'onDanger', 'warning', 'selectedSurface',
+    'disabledSurface', 'disabledForeground',
+  ];
   for (const id of THEME_IDS) {
     const theme = getTheme(id);
     for (const name of colors) {

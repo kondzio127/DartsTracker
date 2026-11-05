@@ -1,6 +1,7 @@
+import Text from '../theme/ThemedText';
 // src/screens/MatchSummaryScreen.tsx
 import React, { useCallback, useLayoutEffect } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';

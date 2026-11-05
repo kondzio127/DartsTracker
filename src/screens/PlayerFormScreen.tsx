@@ -1,16 +1,13 @@
+import { useAppAlert } from '../theme/useAppAlert';
+import TextInput from '../theme/ThemedInput';
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 // src/screens/PlayerFormScreen.tsx
 import React, { useMemo, useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    Alert,
-    Modal,
-    FlatList,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-} from 'react-native';
+import { View, Modal, FlatList, Pressable, SafeAreaView, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -25,6 +22,9 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'PlayerForm'>;
 
 export default function PlayerFormScreen({ route, navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
+    const showAlert = useAppAlert();
     /**
      * If you navigate with:
      * navigation.navigate('PlayerForm', { playerId: '...' })
@@ -55,7 +55,7 @@ export default function PlayerFormScreen({ route, navigation }: Props) {
     /**
      * Search filtering:
      * - Search by country name ("Bulgaria")
-     * - or by ISO2 code ("BG")
+     * - or by ISO2 code ("theme.background")
      */
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -87,7 +87,7 @@ export default function PlayerFormScreen({ route, navigation }: Props) {
     const onSave = () => {
         const trimmed = name.trim();
         if (!trimmed) {
-            Alert.alert('Name required', 'Please enter a player name.');
+            showAlert('Name required', 'Please enter a player name.');
             return;
         }
 
@@ -167,7 +167,7 @@ export default function PlayerFormScreen({ route, navigation }: Props) {
                     <TextInput
                         value={query}
                         onChangeText={setQuery}
-                        placeholder="Search (e.g. Bulgaria / BG / UK)"
+                        placeholder="Search (e.g. Bulgaria / theme.background / UK)"
                         style={styles.input}
                     />
 
@@ -202,26 +202,26 @@ export default function PlayerFormScreen({ route, navigation }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
-    screen: { flex: 1, padding: 16, gap: 12 },
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
+    screen: { backgroundColor: theme.background, flex: 1, padding: 16, gap: 12 },
     title: { fontSize: 20, fontWeight: '700' },
     label: { fontWeight: '700' },
-    hint: { marginTop: 4, opacity: 0.65 },
+    hint: { marginTop: 4, color: theme.muted },
 
-    input: { borderWidth: 1, borderRadius: 10, padding: 10 },
+    input: { borderColor: theme.border, backgroundColor: theme.surface, borderWidth: 1, borderRadius: 10, padding: 10 },
 
     flagField: {
-        borderWidth: 1,
+        borderColor: theme.border, backgroundColor: theme.surface, borderWidth: 1,
         borderRadius: 10,
         padding: 12,
     },
     flagFieldText: { fontWeight: '800' },
 
-    modal: { flex: 1, padding: 16, gap: 10 },
+    modal: { backgroundColor: theme.background, flex: 1, padding: 16, gap: 10 },
     modalTitle: { fontSize: 18, fontWeight: '800' },
 
     countryRow: {
-        borderWidth: 1,
+        borderColor: theme.border, backgroundColor: theme.surface, borderWidth: 1,
         borderRadius: 12,
         padding: 12,
         flexDirection: 'row',
@@ -229,5 +229,5 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     countryLeft: { fontSize: 16, fontWeight: '700' },
-    countryRight: { opacity: 0.7, fontWeight: '800' },
+    countryRight: { color: theme.muted, fontWeight: '800' },
 });

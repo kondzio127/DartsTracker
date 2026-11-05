@@ -1,6 +1,11 @@
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 // src/screens/AroundTheClockDetailScreen.tsx
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -9,6 +14,8 @@ import AppButton from '../components/AppButton';
 type Props = NativeStackScreenProps<RootStackParamList, 'AroundTheClockDetail'>;
 
 export default function AroundTheClockDetailScreen({ route, navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { sessionId } = route.params;
     const session = useGameStore(s =>
         s.aroundTheClockSessions.find(item => item.id === sessionId)
@@ -45,12 +52,12 @@ export default function AroundTheClockDetailScreen({ route, navigation }: Props)
                 <Text style={styles.heroMeta}>Winner · 1–{session.maxTarget}</Text>
             </View>
 
-            <View style={styles.metaCard}>
+            <ThemedCard style={styles.metaCard}>
                 <MetaRow label="Started" value={new Date(session.createdAt).toLocaleString()} />
                 <MetaRow label="Finished" value={new Date(session.finishedAt).toLocaleString()} />
                 <MetaRow label="Duration" value={formatDuration(durationSeconds)} />
                 <MetaRow label="Players" value={String(session.playerIds.length)} />
-            </View>
+            </ThemedCard>
 
             <Text style={styles.sectionTitle}>Player results</Text>
 
@@ -67,7 +74,7 @@ export default function AroundTheClockDetailScreen({ route, navigation }: Props)
                 );
 
                 return (
-                    <View key={playerId} style={styles.resultCard}>
+                    <ThemedCard key={playerId} style={styles.resultCard}>
                         <View style={styles.resultHeader}>
                             <View style={styles.resultCopy}>
                                 <Text style={styles.playerName}>{playerName(playerId)}</Text>
@@ -107,7 +114,7 @@ export default function AroundTheClockDetailScreen({ route, navigation }: Props)
                                 );
                             })}
                         </View>
-                    </View>
+                    </ThemedCard>
                 );
             })}
         </ScrollView>
@@ -115,6 +122,8 @@ export default function AroundTheClockDetailScreen({ route, navigation }: Props)
 }
 
 function MetaRow({ label, value }: { label: string; value: string }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
         <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>{label}</Text>
@@ -124,6 +133,8 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 function DetailStat({ label, value }: { label: string; value: string }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
         <View style={styles.stat}>
             <Text style={styles.statLabel}>{label}</Text>
@@ -138,34 +149,35 @@ function formatDuration(totalSeconds: number): string {
     return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
-const styles = StyleSheet.create({
-    screen: { flexGrow: 1, padding: 16, gap: 14, backgroundColor: '#F5F5F7' },
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
+    screen: { flexGrow: 1, padding: 16, gap: 14, backgroundColor: theme.background },
     centered: {
+        backgroundColor: theme.background,
         flex: 1,
         padding: 16,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
     },
-    hero: { borderRadius: 20, padding: 20, alignItems: 'center', backgroundColor: '#111' },
-    mode: { color: '#C7C8CB', fontWeight: '700' },
-    winner: { marginTop: 5, color: '#FFF', fontSize: 30, fontWeight: '900' },
-    heroMeta: { marginTop: 3, color: '#E7E7E7' },
-    metaCard: { borderRadius: 15, padding: 14, gap: 9, backgroundColor: '#FFF' },
+    hero: { borderRadius: 20, padding: 20, alignItems: 'center', backgroundColor: theme.surfaceRaised },
+    mode: { color: theme.muted, fontWeight: '700' },
+    winner: { marginTop: 5, color: theme.foreground, fontSize: 30, fontWeight: '900' },
+    heroMeta: { marginTop: 3, color: theme.muted },
+    metaCard: { borderRadius: 15, padding: 14, gap: 9, backgroundColor: theme.surface },
     metaRow: { flexDirection: 'row', alignItems: 'flex-start' },
-    metaLabel: { width: 76, color: '#666', fontWeight: '700' },
+    metaLabel: { width: 76, color: theme.muted, fontWeight: '700' },
     metaValue: { flex: 1, textAlign: 'right', fontWeight: '700' },
     sectionTitle: { fontSize: 17, fontWeight: '900' },
-    resultCard: { borderRadius: 16, padding: 14, gap: 12, backgroundColor: '#FFF' },
+    resultCard: { borderRadius: 16, padding: 14, gap: 12, backgroundColor: theme.surface },
     resultHeader: { flexDirection: 'row', alignItems: 'center' },
     resultCopy: { flex: 1 },
     playerName: { fontSize: 17, fontWeight: '900' },
-    finished: { marginTop: 2, color: '#16794A', fontWeight: '800' },
-    notFinished: { marginTop: 2, color: '#666', fontWeight: '700' },
+    finished: { marginTop: 2, color: theme.success, fontWeight: '800' },
+    notFinished: { marginTop: 2, color: theme.muted, fontWeight: '700' },
     reached: { fontSize: 22, fontWeight: '900' },
     statRow: { flexDirection: 'row', gap: 8 },
-    stat: { flex: 1, borderRadius: 11, padding: 9, backgroundColor: '#F3F3F5' },
-    statLabel: { fontSize: 10, color: '#666', fontWeight: '700' },
+    stat: { flex: 1, borderRadius: 11, padding: 9, backgroundColor: theme.surfaceRaised },
+    statLabel: { fontSize: 10, color: theme.muted, fontWeight: '700' },
     statValue: { marginTop: 3, fontSize: 16, fontWeight: '900' },
     gridLabel: { marginTop: 2, fontWeight: '800' },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -173,14 +185,14 @@ const styles = StyleSheet.create({
         width: '22%',
         aspectRatio: 1.25,
         borderWidth: 1,
-        borderColor: '#D8DADF',
+        borderColor: theme.border,
         borderRadius: 9,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F7F7F8',
+        backgroundColor: theme.surfaceRaised,
     },
-    tileReached: { borderColor: '#1D7A4A', backgroundColor: '#1D7A4A' },
-    tileNumber: { color: '#555', fontWeight: '900' },
-    tileNumberReached: { color: '#FFF' },
-    hitCount: { marginTop: 1, color: '#FFF', fontSize: 9, fontWeight: '800' },
+    tileReached: { borderColor: theme.success, backgroundColor: theme.success },
+    tileNumber: { color: theme.muted, fontWeight: '900' },
+    tileNumberReached: { color: theme.onSuccess },
+    hitCount: { marginTop: 1, color: theme.onSuccess, fontSize: 9, fontWeight: '800' },
 });

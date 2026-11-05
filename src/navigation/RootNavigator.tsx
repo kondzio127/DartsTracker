@@ -1,6 +1,9 @@
 // src/navigation/RootNavigator.tsx
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
+import { useAppTheme } from '../theme/useAppTheme';
+import { navigationColors } from '../theme/themeColors';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -38,9 +41,16 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
+    const theme = useAppTheme();
     return (
-        <NavigationContainer>
-            <Stack.Navigator initialRouteName="Home">
+        <NavigationContainer theme={{ ...DefaultTheme, dark: theme.isDark, colors: navigationColors(theme) }}>
+            <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+            <Stack.Navigator initialRouteName="Home" screenOptions={{
+                headerStyle: { backgroundColor: theme.surface },
+                headerTintColor: theme.foreground,
+                contentStyle: { backgroundColor: theme.background },
+                statusBarStyle: theme.isDark ? 'light' : 'dark',
+            }}>
                 <Stack.Screen
                     name="Home"
                     component={HomeScreen}

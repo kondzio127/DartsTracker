@@ -1,7 +1,12 @@
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 // src/screens/PlayerStatsScreen.tsx
 
 import React, { useState } from 'react';
-import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -15,12 +20,6 @@ import { getFlagEmoji, getCountryName } from '../utils/flags';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PlayerStats'>;
 
-const TEXT = '#111111';
-const MUTED = '#6B7280';
-const BORDER = '#E5E7EB';
-const BLUE = '#0A84FF';
-const BG = '#F8FAFC';
-const CARD = '#FFFFFF';
 
 const WINDOW_LABELS: Record<StatsWindowKey, string> = {
     lastSession: 'Session',
@@ -48,6 +47,8 @@ function Pill(props: {
     selected: boolean;
     onPress: () => void;
 }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { label, selected, onPress } = props;
 
     return (
@@ -65,6 +66,8 @@ function Pill(props: {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return <Text style={styles.sectionTitle}>{children}</Text>;
 }
 
@@ -72,6 +75,8 @@ function MetricRow(props: {
     label: string;
     value: string;
 }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { label, value } = props;
 
     return (
@@ -83,6 +88,8 @@ function MetricRow(props: {
 }
 
 function HighlightChip(props: { label: string; value: string | number }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { label, value } = props;
 
     return (
@@ -94,8 +101,10 @@ function HighlightChip(props: { label: string; value: string | number }) {
 }
 
 function SummaryCard({ stats }: { stats: PlayerAggregatedStats }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Summary</SectionTitle>
 
             <View style={styles.summaryGrid}>
@@ -116,13 +125,15 @@ function SummaryCard({ stats }: { stats: PlayerAggregatedStats }) {
                 <HighlightChip label="180s" value={stats.highlights.count180s} />
                 <HighlightChip label="140+" value={stats.highlights.count140Plus} />
             </View>
-        </View>
+        </ThemedCard>
     );
 }
 
 function WinRateCard({ stats }: { stats: PlayerAggregatedStats }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Leg win %</SectionTitle>
 
             <MetricRow
@@ -133,13 +144,15 @@ function WinRateCard({ stats }: { stats: PlayerAggregatedStats }) {
                 label="Didn’t start"
                 value={`${fmtPct(stats.legWinByStarting.notStartedPct)} (${stats.legWinByStarting.legsNotStartedWon}/${stats.legWinByStarting.legsNotStarted})`}
             />
-        </View>
+        </ThemedCard>
     );
 }
 
 function CheckoutCard({ stats }: { stats: PlayerAggregatedStats }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Checkouts</SectionTitle>
 
             <MetricRow
@@ -158,13 +171,15 @@ function CheckoutCard({ stats }: { stats: PlayerAggregatedStats }) {
                 label="121–170"
                 value={`${fmtPct(stats.checkouts.from121to170.pct)} (${stats.checkouts.from121to170.hits}/${stats.checkouts.from121to170.attempts})`}
             />
-        </View>
+        </ThemedCard>
     );
 }
 
 function DoublesCard({ rows }: { rows: DoubleTargetStat[] }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Doubles</SectionTitle>
 
             {rows.length === 0 ? (
@@ -180,15 +195,17 @@ function DoublesCard({ rows }: { rows: DoubleTargetStat[] }) {
                     ))}
                 </View>
             )}
-        </View>
+        </ThemedCard>
     );
 }
 
 function HighlightsCard({ stats }: { stats: PlayerAggregatedStats }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const bestLeg = stats.highlights.bestLeg;
 
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Highlights</SectionTitle>
 
             <MetricRow
@@ -202,7 +219,7 @@ function HighlightsCard({ stats }: { stats: PlayerAggregatedStats }) {
             <MetricRow label="100+" value={`${stats.highlights.count100Plus}`} />
             <MetricRow label="140+" value={`${stats.highlights.count140Plus}`} />
             <MetricRow label="180s" value={`${stats.highlights.count180s}`} />
-        </View>
+        </ThemedCard>
     );
 }
 
@@ -212,10 +229,12 @@ function CompareCard(props: {
     left: PlayerAggregatedStats;
     right: PlayerAggregatedStats;
 }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { leftLabel, rightLabel, left, right } = props;
 
     return (
-        <View style={styles.card}>
+        <ThemedCard style={styles.card}>
             <SectionTitle>Compare</SectionTitle>
 
             <Text style={styles.compareSub}>
@@ -272,11 +291,13 @@ function CompareCard(props: {
                     <Text style={styles.compareCol}>{left.highlights.count180s - right.highlights.count180s}</Text>
                 </View>
             </View>
-        </View>
+        </ThemedCard>
     );
 }
 
 export default function PlayerStatsScreen({ route, navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { playerId } = route.params;
 
     const matches = useGameStore((s) => s.matches);
@@ -291,7 +312,7 @@ export default function PlayerStatsScreen({ route, navigation }: Props) {
     if (!player) {
         return (
             <View style={styles.center}>
-                <Text style={{ color: TEXT }}>Player not found.</Text>
+                <Text style={{ color: theme.foreground }}>Player not found.</Text>
             </View>
         );
     }
@@ -306,7 +327,7 @@ export default function PlayerStatsScreen({ route, navigation }: Props) {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.heroCard}>
+            <ThemedCard style={styles.heroCard}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.heroTitle}>
                         {emoji ? `${emoji} ` : ''}
@@ -322,9 +343,9 @@ export default function PlayerStatsScreen({ route, navigation }: Props) {
                 >
                     <Text style={styles.backButtonText}>Players</Text>
                 </Pressable>
-            </View>
+            </ThemedCard>
 
-            <View style={styles.card}>
+            <ThemedCard style={styles.card}>
                 <SectionTitle>Time Window</SectionTitle>
 
                 <View style={styles.pillRow}>
@@ -371,7 +392,7 @@ export default function PlayerStatsScreen({ route, navigation }: Props) {
                         </View>
                     </>
                 )}
-            </View>
+            </ThemedCard>
 
             <SummaryCard stats={primaryStats} />
             <WinRateCard stats={primaryStats} />
@@ -391,25 +412,25 @@ export default function PlayerStatsScreen({ route, navigation }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
     container: {
         padding: 16,
         gap: 14,
-        backgroundColor: BG,
+        backgroundColor: theme.background,
     },
     center: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: BG,
+        backgroundColor: theme.background,
     },
 
     heroCard: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 18,
         padding: 16,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
@@ -417,40 +438,40 @@ const styles = StyleSheet.create({
     heroTitle: {
         fontSize: 24,
         fontWeight: '900',
-        color: TEXT,
+        color: theme.foreground,
     },
     heroSub: {
         marginTop: 2,
         fontSize: 13,
-        color: MUTED,
+        color: theme.muted,
     },
     backButton: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 999,
         paddingHorizontal: 14,
         paddingVertical: 9,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
     },
     backButtonText: {
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '800',
         fontSize: 12,
     },
 
     card: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 18,
         padding: 16,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
         gap: 12,
     },
 
     sectionTitle: {
         fontSize: 15,
         fontWeight: '900',
-        color: TEXT,
+        color: theme.foreground,
     },
 
     pillRow: {
@@ -460,49 +481,49 @@ const styles = StyleSheet.create({
     },
     pill: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 999,
         paddingHorizontal: 14,
         paddingVertical: 9,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
     },
     pillSelected: {
-        backgroundColor: BLUE,
-        borderColor: BLUE,
+        backgroundColor: theme.accent,
+        borderColor: theme.accent,
     },
     pillText: {
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '800',
         fontSize: 12,
     },
     pillTextSelected: {
-        color: '#fff',
+        color: theme.onAccent,
     },
 
     compareButton: {
         alignSelf: 'flex-start',
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 999,
         paddingHorizontal: 14,
         paddingVertical: 10,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
     },
     compareButtonActive: {
-        borderColor: BLUE,
-        backgroundColor: BLUE,
+        borderColor: theme.accent,
+        backgroundColor: theme.accent,
     },
     compareButtonText: {
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '900',
         fontSize: 13,
     },
     compareButtonTextActive: {
-        color: '#fff',
+        color: theme.onAccent,
     },
     compareHelper: {
         fontSize: 12,
-        color: MUTED,
+        color: theme.muted,
         fontWeight: '700',
     },
 
@@ -513,20 +534,20 @@ const styles = StyleSheet.create({
     bigStatCard: {
         flex: 1,
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 14,
         padding: 14,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: theme.background,
     },
     bigStatValue: {
         fontSize: 30,
         fontWeight: '900',
-        color: TEXT,
+        color: theme.foreground,
     },
     bigStatLabel: {
         marginTop: 2,
         fontSize: 13,
-        color: MUTED,
+        color: theme.muted,
         fontWeight: '700',
     },
     highlightRow: {
@@ -536,22 +557,22 @@ const styles = StyleSheet.create({
     },
     highlightChip: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 14,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        backgroundColor: CARD,
+        backgroundColor: theme.surface,
         minWidth: 80,
     },
     highlightChipValue: {
         fontSize: 18,
         fontWeight: '900',
-        color: TEXT,
+        color: theme.foreground,
     },
     highlightChipLabel: {
         marginTop: 2,
         fontSize: 11,
-        color: MUTED,
+        color: theme.muted,
         fontWeight: '700',
     },
 
@@ -563,23 +584,23 @@ const styles = StyleSheet.create({
     metricLabel: {
         flex: 1,
         fontSize: 14,
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '700',
     },
     metricValue: {
         fontSize: 14,
-        color: TEXT,
+        color: theme.foreground,
         fontWeight: '800',
         textAlign: 'right',
     },
 
     emptyText: {
-        color: MUTED,
+        color: theme.muted,
         fontSize: 13,
     },
 
     compareSub: {
-        color: MUTED,
+        color: theme.muted,
         fontSize: 13,
         fontWeight: '700',
     },
@@ -591,7 +612,7 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingBottom: 6,
         borderBottomWidth: 1,
-        borderBottomColor: BORDER,
+        borderBottomColor: theme.border,
     },
     compareRow: {
         flexDirection: 'row',
@@ -601,17 +622,17 @@ const styles = StyleSheet.create({
         flex: 1.6,
         fontSize: 13,
         fontWeight: '700',
-        color: TEXT,
+        color: theme.foreground,
     },
     compareCol: {
         flex: 1,
         fontSize: 13,
         fontWeight: '800',
-        color: TEXT,
+        color: theme.foreground,
         textAlign: 'right',
     },
     compareHeaderText: {
-        color: MUTED,
+        color: theme.muted,
         fontSize: 12,
         fontWeight: '900',
     },

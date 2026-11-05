@@ -1,7 +1,5 @@
 // src/screens/HomeScreen.tsx
 import React from 'react';
-import { useIsFocused } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
 import { ScrollView, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ThemePicker from '../theme/ThemePicker';
@@ -15,7 +13,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
     const theme = useAppTheme();
-    const isFocused = useIsFocused();
     const playersCount = useGameStore(s => s.players.filter(p => !p.isHidden).length);
     const matchesCount = useGameStore(s => s.matches.filter(m => m.status === 'COMPLETED').length);
     const hasActiveMatch = useGameStore(s => Boolean(s.currentMatch && s.currentLegState && s.currentLegId));
@@ -25,7 +22,6 @@ export default function HomeScreen({ navigation }: Props) {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-            {isFocused && <StatusBar style={theme.isDark ? 'light' : 'dark'} />}
             <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12, justifyContent: 'center' }}>
                 <Text style={{ color: theme.foreground, fontSize: 26, fontWeight: '700' }}>Darts Tracker</Text>
 

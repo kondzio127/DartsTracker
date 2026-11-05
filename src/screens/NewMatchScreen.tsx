@@ -1,24 +1,21 @@
+import { useAppAlert } from '../theme/useAppAlert';
+import TextInput from '../theme/ThemedInput';
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 // src/screens/NewMatchScreen.tsx
 //
 // Goals of this UI:
-// - Clean black/white base theme
-// - Use both blue + black buttons for hierarchy
+// - Shared theme colours with the original layout
+// - Use accent and neutral buttons for hierarchy
 // - No tick emojis (selection is shown via borders/background + labels)
 // - Fast player picking: search, selection counter, clear
 // - Start button always visible (fixed footer)
 
 import React, { useMemo, useState } from 'react';
-import {
-    View,
-    Text,
-    Pressable,
-    ScrollView,
-    TextInput,
-    Alert,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
-} from 'react-native';
+import { View, Pressable, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -29,16 +26,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'NewMatch'>;
 type GameModeUI = 'X01' | 'AROUND_THE_CLOCK';
 type FormatType = 'single' | 'bestOf';
 
-const BLUE = '#0A84FF';
-const BLACK = '#111111';
-const WHITE = '#FFFFFF';
-const MUTED = '#6B7280';
-const BORDER = '#D1D5DB';
-const SOFT = '#F2F2F7';
 
 const MAX_PLAYERS = 4;
 
 export default function NewMatchScreen({ navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
+    const showAlert = useAppAlert();
     // -------------------- Store --------------------
     const players = useGameStore(s => s.players);
     const startMatch = useGameStore(s => s.startMatch);
@@ -102,13 +96,13 @@ export default function NewMatchScreen({ navigation }: Props) {
 
     const onStart = () => {
         if (!canStartPlayers) {
-            Alert.alert('Select players', `Pick at least 1 player (up to ${MAX_PLAYERS}).`);
+            showAlert('Select players', `Pick at least 1 player (up to ${MAX_PLAYERS}).`);
             return;
         }
 
         if (gameMode === 'X01') {
             if (startScore < 2) {
-                Alert.alert('Invalid start score', 'Start score must be 2 or higher (typically 301/501/701).');
+                showAlert('Invalid start score', 'Start score must be 2 or higher (typically 301/501/701).');
                 return;
             }
 
@@ -151,11 +145,11 @@ export default function NewMatchScreen({ navigation }: Props) {
             onPress={onPress}
             style={({ pressed }) => [
                 styles.pill,
-                selected && { backgroundColor: BLACK, borderColor: BLACK },
+                selected && { backgroundColor: theme.accent, borderColor: theme.accent },
                 pressed && { opacity: 0.9 },
             ]}
         >
-            <Text style={[styles.pillText, selected && { color: WHITE }]}>{label}</Text>
+            <Text style={[styles.pillText, selected && { color: theme.onAccent }]}>{label}</Text>
         </Pressable>
     );
 
@@ -183,12 +177,12 @@ export default function NewMatchScreen({ navigation }: Props) {
                 onPress={() => setGameMode(value)}
                 style={({ pressed }) => [
                     styles.modeCard,
-                    selected && { borderColor: BLUE, backgroundColor: '#F3F8FF' },
+                    selected && { borderColor: theme.accent, backgroundColor: theme.selectedSurface },
                     pressed && { opacity: 0.9 },
                 ]}
             >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={[styles.dot, selected && { backgroundColor: BLUE }]} />
+                    <View style={[styles.dot, selected && { backgroundColor: theme.accent }]} />
                     <Text style={styles.modeTitle}>{title}</Text>
                 </View>
                 <Text style={styles.modeSubtitle}>{subtitle}</Text>
@@ -196,7 +190,7 @@ export default function NewMatchScreen({ navigation }: Props) {
         );
     };
 
-    // A simple button component (black or blue)
+    // Preserve the existing button geometry and variant API.
     const Button = ({
                         label,
                         onPress,
@@ -211,9 +205,9 @@ export default function NewMatchScreen({ navigation }: Props) {
         const isBlue = variant === 'blue';
         const isOutline = variant === 'outline';
 
-        const bg = isOutline ? WHITE : isBlue ? BLUE : BLACK;
-        const fg = isOutline ? BLACK : WHITE;
-        const borderColor = isOutline ? BORDER : bg;
+        const bg = disabled ? theme.disabledSurface : isOutline ? theme.surface : isBlue ? theme.accent : theme.foreground;
+        const fg = disabled ? theme.disabledForeground : isOutline ? theme.foreground : isBlue ? theme.onAccent : theme.background;
+        const borderColor = isOutline ? theme.border : bg;
 
         return (
             <Pressable
@@ -222,7 +216,6 @@ export default function NewMatchScreen({ navigation }: Props) {
                 style={({ pressed }) => [
                     styles.btn,
                     { backgroundColor: bg, borderColor },
-                    disabled && { opacity: 0.45 },
                     pressed && !disabled && { opacity: 0.9 },
                 ]}
             >
@@ -233,12 +226,12 @@ export default function NewMatchScreen({ navigation }: Props) {
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: WHITE }}
+            style={{ flex: 1, backgroundColor: theme.surface }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
             <View style={{ flex: 1 }}>
                 {/* Scrollable content */}
-                <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
                     <Text style={styles.pageTitle}>New Game</Text>
 
                     <Section title="Game mode">
@@ -250,12 +243,12 @@ export default function NewMatchScreen({ navigation }: Props) {
 
                     <Section title={`Players (${selectedPlayerIds.length}/${MAX_PLAYERS})`}>
                         {activePlayers.length === 0 ? (
-                            <View style={styles.card}>
-                                <Text style={{ color: MUTED }}>No players yet.</Text>
+                            <ThemedCard style={styles.card}>
+                                <Text style={{ color: theme.muted }}>No players yet.</Text>
                                 <View style={{ marginTop: 10 }}>
                                     <Button label="Go add a player" onPress={() => navigation.navigate('Players')} variant="blue" />
                                 </View>
-                            </View>
+                            </ThemedCard>
                         ) : (
                             <>
                                 <TextInput
@@ -265,7 +258,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                                     style={styles.input}
                                 />
 
-                                {/* Black + Blue button theme (requested) */}
+                                {/* Management actions */}
                                 <View style={{ flexDirection: 'row', gap: 10 }}>
                                     <View style={{ flex: 1 }}>
                                         <Button label="Manage players" onPress={() => navigation.navigate('Players')} variant="black" />
@@ -293,7 +286,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                                                 onPress={() => toggleSelect(p.id)}
                                                 style={({ pressed }) => [
                                                     styles.playerRow,
-                                                    selected && { borderColor: BLUE, backgroundColor: '#F3F8FF' },
+                                                    selected && { borderColor: theme.accent, backgroundColor: theme.selectedSurface },
                                                     pressed && { opacity: 0.9 },
                                                 ]}
                                             >
@@ -319,7 +312,7 @@ export default function NewMatchScreen({ navigation }: Props) {
 
                                 {selectedPlayerIds.length > 0 && (
                                     <View style={[styles.card, { marginTop: 10 }]}>
-                                        <Text style={{ color: MUTED }}>
+                                        <Text style={{ color: theme.muted }}>
                                             Selected: {selectedPlayerIds.map(playerLabel).join(', ')}
                                         </Text>
                                     </View>
@@ -374,7 +367,7 @@ export default function NewMatchScreen({ navigation }: Props) {
                                             style={styles.input}
                                         />
 
-                                        <Text style={{ color: MUTED }}>
+                                        <Text style={{ color: theme.muted }}>
                                             Will use: {bestOfNormalized} (first to {firstTo})
                                         </Text>
                                     </View>
@@ -401,12 +394,9 @@ export default function NewMatchScreen({ navigation }: Props) {
                             />
                         </Section>
                     )}
-
-                    {/* Spacer so scroll content doesn't hide behind fixed footer */}
-                    <View style={{ height: 120 }} />
                 </ScrollView>
 
-                {/* Fixed footer: Blue start + Black back */}
+                {/* Non-scrolling footer reserves its actual height, including wrapped hints. */}
                 <View style={styles.footer}>
                     <Button
                         label={gameMode === 'X01' ? 'Start X01' : 'Start Practice'}
@@ -435,7 +425,7 @@ export default function NewMatchScreen({ navigation }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
     container: {
         padding: 16,
         gap: 14,
@@ -443,102 +433,99 @@ const styles = StyleSheet.create({
     pageTitle: {
         fontSize: 22,
         fontWeight: '900',
-        color: BLACK,
+        color: theme.foreground,
     },
 
     section: { gap: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '900', color: BLACK },
+    sectionTitle: { fontSize: 16, fontWeight: '900', color: theme.foreground },
 
     card: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 14,
         padding: 12,
-        backgroundColor: WHITE,
+        backgroundColor: theme.surface,
     },
 
     modeCard: {
         flex: 1,
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 14,
         padding: 12,
-        backgroundColor: WHITE,
+        backgroundColor: theme.surface,
         gap: 6,
     },
-    modeTitle: { fontWeight: '900', color: BLACK, fontSize: 15 },
-    modeSubtitle: { color: MUTED, fontSize: 12, lineHeight: 16 },
+    modeTitle: { fontWeight: '900', color: theme.foreground, fontSize: 15 },
+    modeSubtitle: { color: theme.muted, fontSize: 12, lineHeight: 16 },
 
     dot: {
         width: 10,
         height: 10,
         borderRadius: 999,
-        backgroundColor: BORDER, // becomes BLUE if selected
+        backgroundColor: theme.border, // becomes theme.accent if selected
     },
 
     input: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 12,
         padding: 10,
-        backgroundColor: WHITE,
+        backgroundColor: theme.surface,
     },
-    helpText: { color: MUTED, fontSize: 12 },
+    helpText: { color: theme.muted, fontSize: 12 },
 
     playerRow: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 14,
         padding: 12,
-        backgroundColor: WHITE,
+        backgroundColor: theme.surface,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    playerName: { fontWeight: '900', color: BLACK, fontSize: 15 },
-    playerMeta: { marginTop: 4, color: MUTED, fontSize: 12 },
+    playerName: { fontWeight: '900', color: theme.foreground, fontSize: 15 },
+    playerMeta: { marginTop: 4, color: theme.muted, fontSize: 12 },
 
     playerChip: {
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 999,
         borderWidth: 1,
-        borderColor: BORDER,
-        backgroundColor: SOFT,
-        color: BLACK,
+        borderColor: theme.border,
+        backgroundColor: theme.surfaceRaised,
+        color: theme.foreground,
         fontWeight: '900',
         fontSize: 12,
         overflow: 'hidden',
     },
     playerChipSelected: {
-        backgroundColor: BLUE,
-        borderColor: BLUE,
-        color: WHITE,
+        backgroundColor: theme.accent,
+        borderColor: theme.accent,
+        color: theme.onAccent,
     },
 
     pill: {
         borderWidth: 1,
-        borderColor: BORDER,
+        borderColor: theme.border,
         borderRadius: 999,
         paddingHorizontal: 14,
         paddingVertical: 10,
-        backgroundColor: WHITE,
+        backgroundColor: theme.surface,
     },
-    pillText: { fontWeight: '900', color: BLACK },
+    pillText: { fontWeight: '900', color: theme.foreground },
 
     footer: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
+        flexShrink: 0,
         padding: 12,
         gap: 10,
         borderTopWidth: 1,
-        borderTopColor: BORDER,
-        backgroundColor: WHITE,
+        borderTopColor: theme.border,
+        backgroundColor: theme.surface,
     },
 
-    btn: {
+    btn: { borderColor: theme.border,
         borderWidth: 1,
         borderRadius: 14,
         paddingVertical: 12,
@@ -549,7 +536,7 @@ const styles = StyleSheet.create({
 
     startHint: {
         textAlign: 'center',
-        color: MUTED,
+        color: theme.muted,
         fontSize: 12,
         marginTop: 2,
     },

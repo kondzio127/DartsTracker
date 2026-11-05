@@ -3,6 +3,7 @@
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "jsx": "react-jsx",
     "rootDir": ".",
     "outDir": "build/engine-tests",
     "strict": true,
@@ -10,10 +11,17 @@
     "skipLibCheck": true
   },
   "include": [
+    "src/screens/HistoryScreen.tsx",
+    "src/screens/NewMatchScreen.tsx",
     "src/types/domain.ts",
     "src/engine/x01.ts",
     "src/engine/aroundTheClock.ts",
     "src/theme/themes.ts",
+    "src/theme/themeColors.ts",
+    "src/theme/ThemedButton.tsx",
+    "src/theme/ThemedCard.tsx",
+    "src/theme/ThemedText.tsx",
+    "src/theme/ThemedInput.tsx",
     "src/theme/themeStore.ts",
     "src/store/gameStore.ts"
   ]

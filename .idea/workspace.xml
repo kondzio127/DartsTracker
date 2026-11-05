@@ -4,8 +4,28 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Add engine/store tests and persisted Home theme picker">
+    <list default="true" id="12cadd3d-1666-40a4-8a9a-402a0491e27d" name="Changes" comment="Extend app-wide theming and add theme contrast tests">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/milestone-1.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/milestone-1.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/AppButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/AppButton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/navigation/RootNavigator.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockDetailScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/AroundTheClockSummaryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/AroundTheClockSummaryScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HistoryScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/HomeScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/LegDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/LegDetailScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MatchDetailScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/MatchSummaryScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/MatchSummaryScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/NewMatchScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/PlayerFormScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayerFormScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/PlayerStatsScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayerStatsScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/PlayersScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/screens/ScoreboardScreen.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/theme/ThemedButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/theme/ThemedButton.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/theme/themes.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/theme/themes.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/themes.test.cjs" beforeDir="false" afterPath="$PROJECT_DIR$/tests/themes.test.cjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tsconfig.engine-tests.json" beforeDir="false" afterPath="$PROJECT_DIR$/tsconfig.engine-tests.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,7 +93,7 @@
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "git-widget-placeholder": "feat/project-foundation",
+    "git-widget-placeholder": "feat/app-wide-theming",
     "javascript.preferred.runtime.type.id": "node",
     "last_opened_file_path": "C:/Users/konra/Projects/darts-tracker",
     "node.js.detected.package.eslint": "true",
@@ -248,6 +268,11 @@
     <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="dbf3ca5e-a9a7-46fc-a030-16010939c887" value="TOOL_WINDOW" />
+      </map>
+    </option>
     <option name="TAB_STATES">
       <map>
         <entry key="MAIN">
@@ -258,7 +283,29 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="feat/project-foundation" />
+                        <option value="main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+        <entry key="dbf3ca5e-a9a7-46fc-a030-16010939c887">
+          <value>
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="feat/app-wide-theming" />
                       </list>
                     </value>
                   </entry>
@@ -282,6 +329,8 @@
     <MESSAGE value="Tips + UI fix" />
     <MESSAGE value="Add migration logic for persisted state, enhance Around the Clock session handling, and update UI with resumed practice and match options" />
     <MESSAGE value="Add engine/store tests and persisted Home theme picker" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add engine/store tests and persisted Home theme picker" />
+    <MESSAGE value="Add persistence isolation test for game and theme stores" />
+    <MESSAGE value="Extend app-wide theming and add theme contrast tests" />
+    <option name="LAST_COMMIT_MESSAGE" value="Extend app-wide theming and add theme contrast tests" />
   </component>
 </project>

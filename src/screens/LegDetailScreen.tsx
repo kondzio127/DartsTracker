@@ -1,5 +1,8 @@
+import { useAppTheme } from '../theme/useAppTheme';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 import React, { useMemo } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, FlatList } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -26,6 +29,7 @@ function computeLegPlayerStats(visits: Visit[], playerId: string) {
 }
 
 export default function LegDetailScreen({ route }: Props) {
+    const theme = useAppTheme();
     const { matchId, legId } = route.params;
 
     const matches = useGameStore(s => s.matches);
@@ -63,12 +67,12 @@ export default function LegDetailScreen({ route }: Props) {
 
             <Text style={{ marginTop: 8, fontWeight: '700' }}>Per-player (this leg)</Text>
             {playerSummaries.map(s => (
-                <View key={s.playerId} style={{ borderWidth: 1, borderRadius: 10, padding: 10, gap: 2 }}>
+                <ThemedCard key={s.playerId} style={{ borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10, gap: 2 }}>
                     <Text style={{ fontWeight: '700' }}>{s.name}</Text>
                     <Text>Avg: {s.stats.avg3Dart.toFixed(1)} | Visits: {s.stats.visits}</Text>
                     <Text>Busts: {s.stats.busts} | Checkouts: {s.stats.checkouts}</Text>
                     <Text>180: {s.stats.c180} | 140+: {s.stats.c140} | 100+: {s.stats.c100}</Text>
-                </View>
+                </ThemedCard>
             ))}
 
             <Text style={{ marginTop: 8, fontWeight: '700' }}>Timeline</Text>
@@ -77,7 +81,7 @@ export default function LegDetailScreen({ route }: Props) {
                 keyExtractor={(v) => v.id}
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
                 renderItem={({ item, index }) => (
-                    <View style={{ borderWidth: 1, borderRadius: 10, padding: 10, gap: 2 }}>
+                    <ThemedCard style={{ borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10, gap: 2 }}>
                         <Text style={{ fontWeight: '700' }}>
                             #{index + 1} — {playerName(item.playerId)}
                         </Text>
@@ -91,10 +95,10 @@ export default function LegDetailScreen({ route }: Props) {
                         <Text>Remaining after: {item.remainingAfter}</Text>
 
                         {/* Optional: show dart breakdown */}
-                        <Text style={{ opacity: 0.75 }}>
+                        <Text style={{ color: theme.muted }}>
                             Darts: {item.scores?.join(', ') ?? '—'}
                         </Text>
-                    </View>
+                    </ThemedCard>
                 )}
             />
         </View>

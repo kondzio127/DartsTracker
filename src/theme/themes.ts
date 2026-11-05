@@ -23,6 +23,14 @@ export type ThemeTokens = {
   accent: string;
   onAccent: string;
   border: string;
+  success: string;
+  onSuccess: string;
+  danger: string;
+  onDanger: string;
+  warning: string;
+  selectedSurface: string;
+  disabledSurface: string;
+  disabledForeground: string;
 };
 
 export const THEMES: Record<ThemeId, ThemeTokens> = {
@@ -38,6 +46,9 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     accent: '#C7F76B',
     onAccent: '#101625',
     border: '#2A354E',
+    success: '#77DDA0', onSuccess: '#102218',
+    danger: '#FF938D', onDanger: '#301313', warning: '#F4C76A',
+    selectedSurface: '#263649', disabledSurface: '#283247', disabledForeground: '#AAB6CC',
   },
   clubhousePaper: {
     name: 'Clubhouse Paper',
@@ -47,11 +58,14 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     surface: '#FFFFFF',
     surfaceRaised: '#EDE8DE',
     foreground: '#17352F',
-    muted: '#67776F',
+    muted: '#4E6055',
     // Slightly darker than the mock-up copper for accessible white button labels.
-    accent: '#B05B40',
+    accent: '#91432D',
     onAccent: '#FFFFFF',
     border: '#DED8CC',
+    success: '#216B42', onSuccess: '#FFFFFF',
+    danger: '#B32F32', onDanger: '#FFFFFF', warning: '#855100',
+    selectedSurface: '#E9E1D4', disabledSurface: '#E5DFD4', disabledForeground: '#5D655E',
   },
   precisionLab: {
     name: 'Precision Lab',
@@ -65,6 +79,9 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     accent: '#54DFDD',
     onAccent: '#10303B',
     border: '#345464',
+    success: '#79D9A4', onSuccess: '#102C20',
+    danger: '#FF9E9E', onDanger: '#301616', warning: '#EBCB7C',
+    selectedSurface: '#244451', disabledSurface: '#293E4B', disabledForeground: '#B1C5CC',
   },
   tournamentBroadcast: {
     name: 'Tournament Broadcast',
@@ -78,6 +95,9 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
     accent: '#F3655D',
     onAccent: '#160D0E',
     border: '#45555C',
+    success: '#89DEA2', onSuccess: '#11271A',
+    danger: '#FF9A94', onDanger: '#301313', warning: '#F3CE78',
+    selectedSurface: '#28282D', disabledSurface: '#303B42', disabledForeground: '#BCC5C8',
   },
 };
 

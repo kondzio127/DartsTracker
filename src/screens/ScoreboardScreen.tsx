@@ -1,5 +1,11 @@
+import { useAppAlert } from '../theme/useAppAlert';
+import { useMemo as useThemeMemo } from 'react';
+import { useAppTheme } from '../theme/useAppTheme';
+import { ThemeTokens } from '../theme/themes';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, Alert, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useGameStore } from '../store/gameStore';
@@ -8,14 +14,6 @@ import { DartMultiplier, Player } from '../types/domain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scoreboard'>;
 
-const BLUE = '#0A84FF';
-const RED = '#FF3B30';
-const GREEN = '#34C759';
-const BG = '#FFFFFF';
-const TEXT = '#111111';
-const MUTED = '#6B7280';
-const BORDER = '#E5E7EB';
-const KEY_BG = '#F2F2F7';
 
 const numberRows: number[][] = [
     [1, 2, 3, 4, 5],
@@ -38,17 +36,19 @@ function scoreFor(segment: number, m: DartMultiplier): number {
     return segment * m;
 }
 
-function multiplierColor(m: DartMultiplier): string {
-    if (m === 2) return BLUE;
-    if (m === 3) return RED;
-    return TEXT;
+function multiplierColor(m: DartMultiplier, theme: ThemeTokens): string {
+    if (m === 2) return theme.accent;
+    if (m === 3) return theme.danger;
+    return theme.foreground;
 }
 
 function MiniButton(props: { label: string; onPress: () => void; onLongPress?: () => void; disabled?: boolean; variant?: 'primary' | 'outline' }) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
     const { label, onPress, onLongPress, disabled, variant = 'outline' } = props;
-    const bg = variant === 'primary' ? BLUE : '#FFFFFF';
-    const fg = variant === 'primary' ? '#FFFFFF' : TEXT;
-    const border = variant === 'primary' ? BLUE : BORDER;
+    const bg = disabled ? theme.disabledSurface : variant === 'primary' ? theme.accent : theme.surface;
+    const fg = disabled ? theme.disabledForeground : variant === 'primary' ? theme.onAccent : theme.foreground;
+    const border = variant === 'primary' ? theme.accent : theme.border;
 
     return (
         <Pressable
@@ -58,7 +58,7 @@ function MiniButton(props: { label: string; onPress: () => void; onLongPress?: (
             disabled={disabled}
             style={({ pressed }) => [
                 styles.miniBtn,
-                { backgroundColor: bg, borderColor: border, opacity: disabled ? 0.45 : 1 },
+                { backgroundColor: bg, borderColor: border },
                 pressed && !disabled ? { opacity: 0.85 } : null,
             ]}
         >
@@ -68,6 +68,9 @@ function MiniButton(props: { label: string; onPress: () => void; onLongPress?: (
 }
 
 export default function ScoreboardScreen({ navigation }: Props) {
+    const theme = useAppTheme();
+    const styles = useThemeMemo(() => createStyles(theme), [theme]);
+    const showAlert = useAppAlert();
     const currentMatch = useGameStore((s: { currentMatch?: ReturnType<typeof useGameStore.getState>['currentMatch'] }) => s.currentMatch) as ReturnType<typeof useGameStore.getState>['currentMatch'];
     const currentLegState = useGameStore((s: { currentLegState?: X01LegState }) => s.currentLegState) as X01LegState | undefined;
     const players = useGameStore((s: { players: Player[] }) => s.players) as Player[];
@@ -106,33 +109,33 @@ export default function ScoreboardScreen({ navigation }: Props) {
     const openTipDetails = () => {
         if (!checkoutAdvice) return;
         if (checkoutAdvice.kind === 'checkout') {
-            Alert.alert('Checkout', `Remaining: ${remaining}\nDarts left: ${dartsLeft}\n\nRoute:\n${checkoutAdvice.route.join(' → ')}`);
+            showAlert('Checkout', `Remaining: ${remaining}\nDarts left: ${dartsLeft}\n\nRoute:\n${checkoutAdvice.route.join(' → ')}`);
             return;
         }
         const setup = checkoutAdvice.setup;
         if (setup) {
-            Alert.alert('Setup', `${checkoutAdvice.message}\n\nAim: ${setup.aim}\nLeaves: ${setup.leaves}${setup.nextOut?.length ? `\n\nNext out:\n${setup.nextOut.join(' → ')}` : ''}`);
+            showAlert('Setup', `${checkoutAdvice.message}\n\nAim: ${setup.aim}\nLeaves: ${setup.leaves}${setup.nextOut?.length ? `\n\nNext out:\n${setup.nextOut.join(' → ')}` : ''}`);
             return;
         }
-        Alert.alert('Setup', `${checkoutAdvice.message}\n\nRemaining: ${remaining}\nDarts left: ${dartsLeft}`);
+        showAlert('Setup', `${checkoutAdvice.message}\n\nRemaining: ${remaining}\nDarts left: ${dartsLeft}`);
     };
 
     const confirmExit = useCallback(() => {
-        Alert.alert('Exit match?', 'You will lose the current in-progress match.', [
+        showAlert('Exit match?', 'You will lose the current in-progress match.', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Exit', style: 'destructive', onPress: () => { abandonMatch(); navigation.navigate('Home'); } },
         ]);
-    }, [abandonMatch, navigation]);
+    }, [abandonMatch, navigation, showAlert]);
 
     useLayoutEffect(() => {
         navigation.setOptions({
             headerLeft: () => (
                 <Pressable onPress={confirmExit} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
-                    <Text style={{ fontWeight: '800', color: TEXT }}>Exit</Text>
+                    <Text style={{ fontWeight: '800', color: theme.foreground }}>Exit</Text>
                 </Pressable>
             ),
         });
-    }, [navigation, confirmExit]);
+    }, [navigation, confirmExit, theme.foreground]);
 
     useEffect(() => {
         if (!currentLegState?.winnerPlayerId || !currentMatch) return;
@@ -143,7 +146,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
     if (!currentMatch || !currentLegState || !currentPlayerId) {
         return (
             <View style={styles.center}>
-                <Text style={{ color: TEXT }}>No active match.</Text>
+                <Text style={{ color: theme.foreground }}>No active match.</Text>
                 <MiniButton label="Back" onPress={() => navigation.navigate('Home')} variant="primary" />
             </View>
         );
@@ -151,7 +154,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
 
     const pushNumber = (segment: number) => {
         if (segment === 25 && multiplier === 3) {
-            Alert.alert('Not possible', 'There is no Triple Bull. Use 25 or Bull.');
+            showAlert('Not possible', 'There is no Triple Bull. Use 25 or Bull.');
             return;
         }
         if (turnLocked) return;
@@ -174,7 +177,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
         }
     };
 
-    const accent = multiplierColor(multiplier);
+    const accent = multiplierColor(multiplier, theme);
 
     return (
         <View style={styles.screen}>
@@ -189,7 +192,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                 </View>
             </View>
 
-            <View style={styles.card}>
+            <ThemedCard style={styles.card}>
                 {currentMatch.playerIds.map((pid: string, idx: number) => {
                     const isTurn = pid === currentLegState.currentPlayerId;
                     const avg = getLegAverage(currentLegState, pid).toFixed(1);
@@ -197,24 +200,24 @@ export default function ScoreboardScreen({ navigation }: Props) {
                         <View key={pid}>
                             <View style={styles.playerLine}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={[styles.playerName, isTurn && { color: BLUE }]} numberOfLines={1}>{nameOf(pid)}</Text>
+                                    <Text style={[styles.playerName, isTurn && { color: theme.accent }]} numberOfLines={1}>{nameOf(pid)}</Text>
                                     <Text style={styles.playerMeta}>Avg {avg}</Text>
                                 </View>
-                                <Text style={[styles.remaining, isTurn && { color: BLUE }]}>{currentLegState.scoresByPlayer[pid]}</Text>
+                                <Text style={[styles.remaining, isTurn && { color: theme.accent }]}>{currentLegState.scoresByPlayer[pid]}</Text>
                             </View>
                             {idx !== currentMatch.playerIds.length - 1 && <View style={styles.sep} />}
                         </View>
                     );
                 })}
-            </View>
+            </ThemedCard>
 
-            <View style={styles.card}>
+            <ThemedCard style={styles.card}>
                 <View style={styles.turnArea}>
                     <View style={styles.turnSlots}>
                         {[0, 1, 2].map((i: number) => {
                             const d = currentLegState.turnDarts[i];
                             return (
-                                <View key={i} style={[styles.turnSlot, d ? { borderColor: BLUE } : null]}>
+                                <View key={i} style={[styles.turnSlot, d ? { borderColor: theme.accent } : null]}>
                                     <Text style={styles.turnSlotTop}>{d ? formatDart(d) : '—'}</Text>
                                     <Text style={styles.turnSlotBottom}>{d ? `${d.score}` : ''}</Text>
                                 </View>
@@ -243,12 +246,13 @@ export default function ScoreboardScreen({ navigation }: Props) {
                         <Text style={styles.tipLine2} numberOfLines={1}>Rem {remaining} • {dartsLeft} dart{dartsLeft === 1 ? '' : 's'} left</Text>
                     </Pressable>
                 )}
-            </View>
+            </ThemedCard>
 
             <View style={styles.multRow}>
                 {([1, 2, 3] as DartMultiplier[]).map((m: DartMultiplier) => {
                     const selected = multiplier === m;
-                    const col = multiplierColor(m);
+                    const col = multiplierColor(m, theme);
+                    const selectedText = m === 1 ? theme.background : m === 2 ? theme.onAccent : theme.onDanger;
                     const label = m === 1 ? 'S' : m === 2 ? 'D' : 'T';
                     return (
                         <Pressable
@@ -256,8 +260,8 @@ export default function ScoreboardScreen({ navigation }: Props) {
                             onPress={() => setMultiplier(m)}
                             style={({ pressed }) => [styles.multBtn, { borderColor: col }, selected && { backgroundColor: col, borderColor: col }, pressed && { opacity: 0.9 }]}
                         >
-                            <Text style={[styles.multText, selected && { color: '#fff' }]}>{label}</Text>
-                            <Text style={[styles.multSub, selected && { color: '#fff' }]}>{m === 1 ? 'Single' : m === 2 ? 'Double' : 'Triple'}</Text>
+                            <Text style={[styles.multText, selected && { color: selectedText }]}>{label}</Text>
+                            <Text style={[styles.multSub, selected && { color: selectedText }]}>{m === 1 ? 'Single' : m === 2 ? 'Double' : 'Triple'}</Text>
                         </Pressable>
                     );
                 })}
@@ -270,28 +274,28 @@ export default function ScoreboardScreen({ navigation }: Props) {
                             <Pressable
                                 key={n}
                                 onPress={() => pushNumber(n)}
-                                style={({ pressed }) => [styles.key, { borderColor: multiplier === 1 ? BORDER : accent, opacity: turnLocked ? 0.45 : 1 }, pressed && !turnLocked ? { opacity: 0.85 } : null]}
+                                style={({ pressed }) => [styles.key, turnLocked && styles.keyDisabled, { borderColor: multiplier === 1 ? theme.border : accent }, pressed && !turnLocked ? { opacity: 0.85 } : null]}
                                 disabled={turnLocked}
                             >
-                                <Text style={styles.keyTop}>{n}</Text>
-                                <Text style={styles.keyBottom}>{scoreFor(n, multiplier)}</Text>
+                                <Text style={[styles.keyTop, turnLocked && styles.keyTextDisabled]}>{n}</Text>
+                                <Text style={[styles.keyBottom, turnLocked && styles.keyTextDisabled]}>{scoreFor(n, multiplier)}</Text>
                             </Pressable>
                         ))}
                     </View>
                 ))}
 
                 <View style={styles.padRow}>
-                    <Pressable onPress={pushMiss} style={({ pressed }) => [styles.key, styles.keyMiss, pressed && !turnLocked ? { opacity: 0.85 } : null, { opacity: turnLocked ? 0.45 : 1 }]} disabled={turnLocked}>
-                        <Text style={[styles.keyTop, { color: '#fff' }]}>MISS</Text>
-                        <Text style={[styles.keyBottom, { color: '#fff' }]}>0</Text>
+                    <Pressable onPress={pushMiss} style={({ pressed }) => [styles.key, styles.keyMiss, turnLocked && styles.keyDisabled, pressed && !turnLocked ? { opacity: 0.85 } : null]} disabled={turnLocked}>
+                        <Text style={[styles.keyTop, { color: turnLocked ? theme.disabledForeground : theme.foreground }]}>MISS</Text>
+                        <Text style={[styles.keyBottom, { color: turnLocked ? theme.disabledForeground : theme.foreground }]}>0</Text>
                     </Pressable>
-                    <Pressable onPress={push25} style={({ pressed }) => [styles.key, styles.key25, pressed && !turnLocked ? { opacity: 0.85 } : null, { opacity: turnLocked ? 0.45 : 1 }]} disabled={turnLocked}>
-                        <Text style={[styles.keyTop, { color: '#fff' }]}>25</Text>
-                        <Text style={[styles.keyBottom, { color: '#fff' }]}>25</Text>
+                    <Pressable onPress={push25} style={({ pressed }) => [styles.key, styles.key25, turnLocked && styles.keyDisabled, pressed && !turnLocked ? { opacity: 0.85 } : null]} disabled={turnLocked}>
+                        <Text style={[styles.keyTop, { color: turnLocked ? theme.disabledForeground : theme.onSuccess }]}>25</Text>
+                        <Text style={[styles.keyBottom, { color: turnLocked ? theme.disabledForeground : theme.onSuccess }]}>25</Text>
                     </Pressable>
-                    <Pressable onPress={pushBull} style={({ pressed }) => [styles.key, styles.keyBull, pressed && !turnLocked ? { opacity: 0.85 } : null, { opacity: turnLocked ? 0.45 : 1 }]} disabled={turnLocked}>
-                        <Text style={[styles.keyTop, { color: '#fff' }]}>BULL</Text>
-                        <Text style={[styles.keyBottom, { color: '#fff' }]}>50</Text>
+                    <Pressable onPress={pushBull} style={({ pressed }) => [styles.key, styles.keyBull, turnLocked && styles.keyDisabled, pressed && !turnLocked ? { opacity: 0.85 } : null]} disabled={turnLocked}>
+                        <Text style={[styles.keyTop, { color: turnLocked ? theme.disabledForeground : theme.onDanger }]}>BULL</Text>
+                        <Text style={[styles.keyBottom, { color: turnLocked ? theme.disabledForeground : theme.onDanger }]}>50</Text>
                     </Pressable>
                 </View>
             </View>
@@ -301,46 +305,48 @@ export default function ScoreboardScreen({ navigation }: Props) {
     );
 }
 
-const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: BG, padding: 12, gap: 8 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+const createStyles = (theme: ThemeTokens) => StyleSheet.create({
+    screen: { flex: 1, backgroundColor: theme.background, padding: 12, gap: 8 },
+    center: { backgroundColor: theme.background, flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-    title: { fontSize: 20, fontWeight: '900', color: TEXT },
-    subtitle: { fontSize: 13, color: MUTED },
-    bold: { fontWeight: '900', color: TEXT },
+    title: { fontSize: 20, fontWeight: '900', color: theme.foreground },
+    subtitle: { fontSize: 13, color: theme.muted },
+    bold: { fontWeight: '900', color: theme.foreground },
     turnBox: { alignItems: 'flex-end' },
-    turnLabel: { fontSize: 12, color: MUTED, fontWeight: '800' },
-    turnValue: { fontSize: 22, fontWeight: '900', color: TEXT },
-    card: { borderWidth: 1, borderColor: BORDER, borderRadius: 14, padding: 10, backgroundColor: '#fff' },
-    sep: { height: 1, backgroundColor: BORDER, marginVertical: 8 },
+    turnLabel: { fontSize: 12, color: theme.muted, fontWeight: '800' },
+    turnValue: { fontSize: 22, fontWeight: '900', color: theme.foreground },
+    card: { borderWidth: 1, borderColor: theme.border, borderRadius: 14, padding: 10, backgroundColor: theme.surface },
+    sep: { height: 1, backgroundColor: theme.border, marginVertical: 8 },
     playerLine: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    playerName: { fontSize: 15, fontWeight: '900', color: TEXT },
-    playerMeta: { fontSize: 12, color: MUTED, marginTop: 2 },
-    remaining: { fontSize: 20, fontWeight: '900', color: TEXT },
+    playerName: { fontSize: 15, fontWeight: '900', color: theme.foreground },
+    playerMeta: { fontSize: 12, color: theme.muted, marginTop: 2 },
+    remaining: { fontSize: 20, fontWeight: '900', color: theme.foreground },
     turnArea: { gap: 10 },
     turnSlots: { flexDirection: 'row', gap: 8 },
-    turnSlot: { flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingVertical: 8, alignItems: 'center', backgroundColor: '#fff' },
-    turnSlotTop: { fontSize: 14, fontWeight: '900', color: TEXT },
-    turnSlotBottom: { fontSize: 12, fontWeight: '800', color: MUTED, marginTop: 2 },
+    turnSlot: { flex: 1, borderWidth: 1, borderColor: theme.border, borderRadius: 12, paddingVertical: 8, alignItems: 'center', backgroundColor: theme.surface },
+    turnSlotTop: { fontSize: 14, fontWeight: '900', color: theme.foreground },
+    turnSlotBottom: { fontSize: 12, fontWeight: '800', color: theme.muted, marginTop: 2 },
     actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
-    miniBtn: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', minWidth: 88 },
+    miniBtn: { borderColor: theme.border, borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', minWidth: 88 },
     miniBtnText: { fontSize: 13, fontWeight: '900' },
-    tipBar: { marginTop: 10, borderWidth: 1, borderColor: '#BBD7FF', backgroundColor: '#F3F8FF', borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, gap: 2 },
-    tipTitle: { fontSize: 12, fontWeight: '900', color: BLUE },
-    tipTap: { fontSize: 11, fontWeight: '800', color: MUTED },
-    tipLine: { fontSize: 13, fontWeight: '900', color: TEXT },
-    tipLine2: { fontSize: 12, fontWeight: '700', color: MUTED },
+    tipBar: { marginTop: 10, borderWidth: 1, borderColor: theme.accent, backgroundColor: theme.selectedSurface, borderRadius: 14, paddingVertical: 8, paddingHorizontal: 10, gap: 2 },
+    tipTitle: { fontSize: 12, fontWeight: '900', color: theme.accent },
+    tipTap: { fontSize: 11, fontWeight: '800', color: theme.muted },
+    tipLine: { fontSize: 13, fontWeight: '900', color: theme.foreground },
+    tipLine2: { fontSize: 12, fontWeight: '700', color: theme.muted },
     multRow: { flexDirection: 'row', gap: 10 },
-    multBtn: { flex: 1, borderWidth: 1, borderRadius: 14, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-    multText: { fontSize: 16, fontWeight: '900', color: TEXT },
-    multSub: { marginTop: 2, fontSize: 11, fontWeight: '800', color: MUTED },
+    multBtn: { borderColor: theme.border, flex: 1, borderWidth: 1, borderRadius: 14, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.surface },
+    multText: { fontSize: 16, fontWeight: '900', color: theme.foreground },
+    multSub: { marginTop: 2, fontSize: 11, fontWeight: '800', color: theme.muted },
     pad: { flex: 1, gap: 8, marginTop: 2 },
     padRow: { flexDirection: 'row', gap: 8, flex: 1 },
-    key: { flex: 1, borderWidth: 1, borderColor: BORDER, borderRadius: 14, backgroundColor: KEY_BG, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
-    keyTop: { fontSize: 16, fontWeight: '900', color: TEXT },
-    keyBottom: { marginTop: 2, fontSize: 12, fontWeight: '800', color: MUTED },
-    keyMiss: { backgroundColor: '#8E8E93', borderColor: '#8E8E93' },
-    key25: { backgroundColor: GREEN, borderColor: GREEN },
-    keyBull: { backgroundColor: RED, borderColor: RED },
-    footerHint: { textAlign: 'center', fontSize: 11, color: MUTED },
+    key: { flex: 1, borderWidth: 1, borderColor: theme.border, borderRadius: 14, backgroundColor: theme.surfaceRaised, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+    keyDisabled: { backgroundColor: theme.disabledSurface, borderColor: theme.border },
+    keyTextDisabled: { color: theme.disabledForeground },
+    keyTop: { fontSize: 16, fontWeight: '900', color: theme.foreground },
+    keyBottom: { marginTop: 2, fontSize: 12, fontWeight: '800', color: theme.muted },
+    keyMiss: { backgroundColor: theme.surfaceRaised, borderColor: theme.border },
+    key25: { backgroundColor: theme.success, borderColor: theme.success },
+    keyBull: { backgroundColor: theme.danger, borderColor: theme.danger },
+    footerHint: { textAlign: 'center', fontSize: 11, color: theme.muted },
 });

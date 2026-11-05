@@ -1,5 +1,8 @@
+import { useAppTheme } from '../theme/useAppTheme';
+import Text from '../theme/ThemedText';
+import ThemedCard from '../theme/ThemedCard';
 import React from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, FlatList } from 'react-native';
 import { Pressable } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -9,6 +12,7 @@ import { getMatchWinnerId, getPlayerMatchAverage, getPlayerCheckoutRate } from '
 type Props = NativeStackScreenProps<RootStackParamList, 'MatchDetail'>;
 
 export default function MatchDetailScreen({ route, navigation }: Props) {
+    const theme = useAppTheme();
     const { matchId } = route.params;
 
     const matches = useGameStore(s => s.matches);
@@ -46,12 +50,12 @@ export default function MatchDetailScreen({ route, navigation }: Props) {
                 const avg = getPlayerMatchAverage(match, pid).toFixed(1);
                 const co = getPlayerCheckoutRate(match, pid);
                 return (
-                    <View key={pid} style={{ borderWidth: 1, borderRadius: 10, padding: 10, gap: 4 }}>
+                    <ThemedCard key={pid} style={{ borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10, gap: 4 }}>
                         <Text style={{ fontWeight: '700' }}>{playerName(pid)}</Text>
                         <Text>Avg (per visit): {avg}</Text>
                         <Text>Checkout: {co.successes}/{co.opportunities} ({co.pct.toFixed(1)}%)</Text>
                         <Text>Legs won: {match.legWinsByPlayer?.[pid] ?? 0}</Text>
-                    </View>
+                    </ThemedCard>
                 );
             })}
 
@@ -63,13 +67,13 @@ export default function MatchDetailScreen({ route, navigation }: Props) {
                 renderItem={({ item }) => (
                     <Pressable
                         onPress={() => navigation.navigate('LegDetail', { matchId: match.id, legId: item.id })}
-                        style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
+                        style={{ borderColor: theme.border, borderWidth: 1, borderRadius: 10, padding: 10 }}
                     >
                         <Text style={{ fontWeight: '700' }}>Leg {item.sequence}</Text>
                         <Text>Started: {playerName(item.startingPlayerId)}</Text>
                         <Text>Winner: {item.winnerPlayerId ? playerName(item.winnerPlayerId) : '—'}</Text>
                         <Text>Visits: {item.visits.length}</Text>
-                        <Text style={{ marginTop: 6, opacity: 0.7 }}>Tap for details</Text>
+                        <Text style={{ marginTop: 6, color: theme.muted }}>Tap for details</Text>
                     </Pressable>
                 )}
             />

@@ -1,19 +1,23 @@
 import React from 'react';
-import { Pressable, StyleProp, Text, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, Text, ViewStyle, PressableProps } from 'react-native';
 
 import { useAppTheme } from './useAppTheme';
+import { buttonColors } from './themeColors';
 
 type Props = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   style?: StyleProp<ViewStyle>;
+  onLongPress?: PressableProps['onLongPress'];
+  delayLongPress?: number;
+  compact?: boolean;
+  legacy?: boolean;
 };
 
 /**
- * New screens use this button while existing screens keep AppButton.
- * Once each old screen is themed, we can consolidate to one button component.
+ * Shared colours with sizing options to preserve existing screen layouts.
  */
 export default function ThemedButton({
   label,
@@ -21,9 +25,13 @@ export default function ThemedButton({
   disabled = false,
   variant = 'primary',
   style,
+  onLongPress,
+  delayLongPress,
+  compact = false,
+  legacy = false,
 }: Props) {
   const theme = useAppTheme();
-  const primary = variant === 'primary';
+  const { background, foreground, border } = buttonColors(theme, variant, disabled);
 
   return (
     <Pressable
@@ -32,27 +40,29 @@ export default function ThemedButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
       style={({ pressed }) => [
         {
-          minHeight: 48,
-          paddingHorizontal: 16,
-          paddingVertical: 13,
-          borderRadius: 14,
+          minHeight: compact || legacy ? undefined : 48,
+          paddingHorizontal: compact ? 10 : legacy ? 14 : 16,
+          paddingVertical: compact ? 8 : legacy ? 12 : 13,
+          borderRadius: legacy ? 12 : 14,
           borderWidth: 1,
-          borderColor: primary ? theme.accent : theme.border,
-          backgroundColor: primary ? theme.accent : theme.surfaceRaised,
+          borderColor: border,
+          backgroundColor: background,
           justifyContent: 'center',
           alignItems: 'center',
-          opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
+          opacity: pressed && !disabled ? 0.82 : 1,
         },
         style,
       ]}
     >
       <Text
         style={{
-          color: primary ? theme.onAccent : theme.foreground,
-          fontSize: 15,
-          fontWeight: '700',
+          color: foreground,
+          fontSize: compact ? 13 : legacy ? 16 : 15,
+          fontWeight: legacy ? '600' : '700',
         }}
       >
         {label}

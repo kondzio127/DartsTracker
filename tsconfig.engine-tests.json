@@ -15,6 +15,7 @@
     "src/screens/NewMatchScreen.tsx",
     "src/types/domain.ts",
     "src/engine/x01.ts",
+    "src/engine/scoringValidation.ts",
     "src/engine/aroundTheClock.ts",
     "src/theme/themes.ts",
     "src/theme/themeColors.ts",

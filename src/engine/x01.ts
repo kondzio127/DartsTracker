@@ -186,7 +186,8 @@ export function undoLastDart(legState: X01LegState): X01LegState {
 }
 
 export function commitTurn(
-    legState: X01LegState
+    legState: X01LegState,
+    metadata?: { id: string; createdAt: string }
 ): { legState: X01LegState; committedVisit?: Visit } {
     if (legState.winnerPlayerId) {
         return { legState };
@@ -207,7 +208,7 @@ export function commitTurn(
     const totalScore = isBust ? 0 : rawScores.reduce((sum, s) => sum + s, 0);
 
     const visit: Visit = {
-        id: uuid(),
+        id: metadata?.id ?? uuid(),
         legId: 'LEG_TEMP',
         playerId,
         scores: rawScores,
@@ -216,7 +217,7 @@ export function commitTurn(
         remainingAfter: evaluated.remainingAfter,
         isBust,
         isCheckout,
-        createdAt: new Date().toISOString(),
+        createdAt: metadata?.createdAt ?? new Date().toISOString(),
         segments: legState.turnDarts.map(d => d.segment),
         multipliers: legState.turnDarts.map(d => d.multiplier),
     };

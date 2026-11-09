@@ -11,6 +11,7 @@
     "skipLibCheck": true
   },
   "include": [
+    "App.tsx",
     "src/screens/HistoryScreen.tsx",
     "src/screens/NewMatchScreen.tsx",
     "src/types/domain.ts",
@@ -24,6 +25,7 @@
     "src/theme/ThemedText.tsx",
     "src/theme/ThemedInput.tsx",
     "src/theme/themeStore.ts",
+    "src/application/x01Operations.ts",
     "src/store/gameStore.ts"
   ]
 }

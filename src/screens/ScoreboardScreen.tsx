@@ -4,7 +4,7 @@ import { useAppTheme } from '../theme/useAppTheme';
 import { ThemeTokens } from '../theme/themes';
 import Text from '../theme/ThemedText';
 import ThemedCard from '../theme/ThemedCard';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -78,7 +78,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
     const addDart = useGameStore((s: ReturnType<typeof useGameStore.getState>) => s.addDart);
     const undoDart = useGameStore((s: ReturnType<typeof useGameStore.getState>) => s.undoDart);
     const endTurn = useGameStore((s: ReturnType<typeof useGameStore.getState>) => s.endTurn);
-    const finishLegIfNeeded = useGameStore((s: ReturnType<typeof useGameStore.getState>) => s.finishLegIfNeeded);
+    const displayedLegId = useGameStore(s => s.currentLegId);
     const abandonMatch = useGameStore((s: ReturnType<typeof useGameStore.getState>) => s.abandonMatch);
 
     const [multiplier, setMultiplier] = useState<DartMultiplier>(1);
@@ -137,12 +137,6 @@ export default function ScoreboardScreen({ navigation }: Props) {
         });
     }, [navigation, confirmExit, theme.foreground]);
 
-    useEffect(() => {
-        if (!currentLegState?.winnerPlayerId || !currentMatch) return;
-        const { matchFinished, matchId } = finishLegIfNeeded();
-        if (matchFinished && matchId) navigation.replace('MatchSummary', { matchId });
-    }, [currentLegState?.winnerPlayerId, currentMatch, finishLegIfNeeded, navigation]);
-
     if (!currentMatch || !currentLegState || !currentPlayerId) {
         return (
             <View style={styles.center}>
@@ -152,19 +146,26 @@ export default function ScoreboardScreen({ navigation }: Props) {
         );
     }
 
+    const handleResult = (result: ReturnType<typeof addDart>) => {
+        if (result.matchFinished && result.matchId) navigation.replace('MatchSummary', { matchId: result.matchId });
+    };
+    const recordDart = (segment: number, selectedMultiplier: DartMultiplier) => {
+        if (displayedLegId) handleResult(addDart(segment, selectedMultiplier, displayedLegId));
+    };
+
     const pushNumber = (segment: number) => {
         if (segment === 25 && multiplier === 3) {
             showAlert('Not possible', 'There is no Triple Bull. Use 25 or Bull.');
             return;
         }
         if (turnLocked) return;
-        addDart(segment, multiplier);
+        recordDart(segment, multiplier);
         setMultiplier(1);
     };
 
     const pushMiss = () => pushNumber(0);
-    const push25 = () => { if (!turnLocked) { addDart(25, 1); setMultiplier(1); } };
-    const pushBull = () => { if (!turnLocked) { addDart(25, 2); setMultiplier(1); } };
+    const push25 = () => { if (!turnLocked) { recordDart(25, 1); setMultiplier(1); } };
+    const pushBull = () => { if (!turnLocked) { recordDart(25, 2); setMultiplier(1); } };
 
     const undoWholeTurn = () => {
         const st = useGameStore.getState().currentLegState;
@@ -226,7 +227,7 @@ export default function ScoreboardScreen({ navigation }: Props) {
                     </View>
                     <View style={styles.actionsRow}>
                         <MiniButton label="Undo" onPress={undoDart} onLongPress={undoWholeTurn} disabled={!canUndo} variant="outline" />
-                        {showEndEarly && <MiniButton label="End" onPress={endTurn} variant="primary" />}
+                        {showEndEarly && <MiniButton label="End" onPress={() => { if (displayedLegId) handleResult(endTurn(displayedLegId)); }} variant="primary" />}
                     </View>
                 </View>
 

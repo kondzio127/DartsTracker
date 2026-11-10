@@ -6,7 +6,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import {
     Player,
     Match,
-    Leg,
     AroundTheClockSession,
     AroundTheClockPlayerResult,
     DartMultiplier,
@@ -14,11 +13,7 @@ import {
 import {
     X01LegState,
     createInitialLegState,
-    applyDart,
-    createDartThrow,
     undoLastDart,
-    commitTurn,
-    endTurn as engineEndTurn,
 } from '../engine/x01';
 import {
     AroundTheClockState,
@@ -28,8 +23,12 @@ import {
     getCompletedTargetCount,
 } from '../engine/aroundTheClock';
 
+import { completeX01LegIfNeeded, endX01Turn, recordX01Dart, X01OperationResult } from '../application/x01Operations';
+import type { BoardNumber, DetailedDartInput } from '../types/scoring';
+
 const uuid = () => Math.random().toString(36).slice(2);
 const DARTS_PER_TURN = 3;
+const operationMetadata = () => ({ visitId: uuid(), nextLegId: uuid(), now: new Date().toISOString() });
 
 function inferRemainingBefore(v: any): number {
     if (typeof v?.remainingBefore === 'number') return v.remainingBefore;
@@ -121,9 +120,9 @@ interface GameState {
     abandonMatch: () => void;
     deleteMatch: (matchId: string) => void;
 
-    addDart: (segment: number, multiplier: DartMultiplier) => void;
+    addDart: (segment: number, multiplier: DartMultiplier, expectedLegId?: string) => X01OperationResult;
     undoDart: () => void;
-    endTurn: () => void;
+    endTurn: (expectedLegId: string) => X01OperationResult;
 
     finishLegIfNeeded: () => { matchFinished: boolean; matchId?: string };
 
@@ -132,6 +131,78 @@ interface GameState {
     undoAroundTheClockDart: () => void;
     resetAroundTheClock: () => void;
 }
+
+export type GameHydrationStatus =
+    | { status: 'loading' | 'ready' }
+    | { status: 'error'; error: unknown };
+let gameHydrationStatus: GameHydrationStatus = { status: 'loading' };
+const hydrationStatusListeners = new Set<() => void>();
+export const getGameHydrationStatus = (): GameHydrationStatus => gameHydrationStatus;
+export function subscribeGameHydrationStatus(listener: () => void): () => void {
+    hydrationStatusListeners.add(listener);
+    return () => { hydrationStatusListeners.delete(listener); };
+}
+function publishHydrationStatus(status: GameHydrationStatus) {
+    gameHydrationStatus = status;
+    hydrationStatusListeners.forEach(listener => listener());
+}
+
+export type RecoveryPersistenceStatus =
+    | { status: 'idle' | 'pending' | 'saved' }
+    | { status: 'failed'; error: unknown };
+
+let recoveryPersistenceStatus: RecoveryPersistenceStatus = { status: 'idle' };
+/** hasHydrated stays false until recovery is saved. Retry failures with persist.rehydrate(). */
+export const getX01RecoveryPersistenceStatus = (): RecoveryPersistenceStatus => recoveryPersistenceStatus;
+
+// Serialize reads and writes, including recovery, so overlapping hydration cannot
+// read the same legacy checkout while its replacement is still being saved.
+let storageQueue: Promise<unknown> = Promise.resolve();
+let storageBusy = 0;
+function serializeStorage<T>(operation: () => Promise<T>): Promise<T> {
+    storageBusy++;
+    const result = storageQueue.then(operation).finally(() => { storageBusy--; });
+    storageQueue = result.catch(() => undefined);
+    return result;
+}
+
+// Keep the generated replacement after a failed write so retry uses the same IDs.
+let recoveryRetry: { original: string; replacement: string } | undefined;
+const recoveryStorage = {
+    getItem: (key: string): Promise<string | null> => serializeStorage(async () => {
+        const original = await AsyncStorage.getItem(key);
+        if (!original) return original;
+        let replacement: string;
+        if (recoveryRetry?.original === original) {
+            replacement = recoveryRetry.replacement;
+        } else {
+            const envelope = JSON.parse(original);
+            const persisted = envelope.state as Partial<GameState>;
+            const candidate = { ...persisted, matches: persisted.matches ?? [],
+                currentLegWins: persisted.currentLegWins ?? {},
+                currentMatch: persisted.currentMatch && envelope.version < 3
+                    ? { ...persisted.currentMatch, status: 'IN_PROGRESS' as const } : persisted.currentMatch };
+            const recovered = completeX01LegIfNeeded(candidate, operationMetadata());
+            if (recovered.state === candidate) return original;
+            replacement = JSON.stringify({ ...envelope, state: { ...persisted, ...recovered.state } });
+            recoveryRetry = { original, replacement };
+        }
+        recoveryPersistenceStatus = { status: 'pending' };
+        try {
+            await AsyncStorage.setItem(key, replacement);
+            recoveryPersistenceStatus = { status: 'saved' };
+            recoveryRetry = undefined;
+            return replacement;
+        } catch (error) {
+            recoveryPersistenceStatus = { status: 'failed', error };
+            throw error; // Zustand handles the hydration rejection; hasHydrated remains false.
+        }
+    }),
+    setItem: (key: string, value: string): Promise<void> =>
+        storageBusy ? serializeStorage(() => AsyncStorage.setItem(key, value)) : AsyncStorage.setItem(key, value),
+    removeItem: (key: string): Promise<void> => storageBusy
+        ? serializeStorage(() => AsyncStorage.removeItem(key)) : AsyncStorage.removeItem(key),
+};
 
 export const useGameStore = create<GameState>()(
     persist(
@@ -269,77 +340,14 @@ export const useGameStore = create<GameState>()(
                 }));
             },
 
-            addDart: (segment, multiplier) => {
-                const { currentLegState, currentMatch, currentLegId } = get();
-                if (!currentLegState || !currentMatch || !currentLegId) return;
-
-                // block impossible triple bull
-                if (segment === 25 && multiplier === 3) return;
-
-                // ignore if turn is already locked/full
-                if (currentLegState.turnDarts.length >= 3) return;
-                if (currentLegState.turnStatus !== 'IN_PROGRESS') return;
-
-                // IMPORTANT:
-                // applyDart returns a plain X01LegState in your current engine
-                const updated = applyDart(
-                    currentLegState,
-                    createDartThrow(segment, multiplier)
-                );
-
-                // CASE 1: checkout -> commit immediately
-                if (updated.turnStatus === 'CHECKOUT') {
-                    const { legState: committedState, committedVisit } = commitTurn(updated);
-
-                    let fixedState = committedState;
-                    if (committedVisit) {
-                        const fixedVisit = { ...committedVisit, legId: currentLegId };
-                        fixedState = {
-                            ...committedState,
-                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
-                        };
-                    }
-
-                    set({ currentLegState: fixedState });
-                    return;
-                }
-
-                // CASE 2: bust -> commit immediately
-                if (updated.turnStatus === 'BUST') {
-                    const { legState: committedState, committedVisit } = commitTurn(updated);
-
-                    let fixedState = committedState;
-                    if (committedVisit) {
-                        const fixedVisit = { ...committedVisit, legId: currentLegId };
-                        fixedState = {
-                            ...committedState,
-                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
-                        };
-                    }
-
-                    set({ currentLegState: fixedState });
-                    return;
-                }
-
-                // CASE 3: third dart entered -> commit immediately
-                if (updated.turnDarts.length === 3) {
-                    const { legState: committedState, committedVisit } = commitTurn(updated);
-
-                    let fixedState = committedState;
-                    if (committedVisit) {
-                        const fixedVisit = { ...committedVisit, legId: currentLegId };
-                        fixedState = {
-                            ...committedState,
-                            visits: [...committedState.visits.slice(0, -1), fixedVisit],
-                        };
-                    }
-
-                    set({ currentLegState: fixedState });
-                    return;
-                }
-
-                // Otherwise keep partial turn editable
-                set({ currentLegState: updated });
+            addDart: (segment, multiplier, expectedLegId) => {
+                const input = { kind: 'dart', source: 'keypad', landing: segment === 0
+                    ? { kind: 'miss' }
+                    : segment === 25 ? { kind: 'bull', multiplier }
+                        : { kind: 'number', segment: segment as BoardNumber, multiplier } } as DetailedDartInput;
+                const result = recordX01Dart(get(), expectedLegId ?? get().currentLegId ?? '', input, operationMetadata());
+                if (result.state !== get()) set(result.state);
+                return result;
             },
 
             undoDart: () => {
@@ -383,94 +391,17 @@ export const useGameStore = create<GameState>()(
                 set({ currentLegState: newLegState });
             },
 
-            endTurn: () => {
-                const { currentLegState, currentLegId } = get();
-                if (!currentLegState || !currentLegId) return;
-
-                const { legState: updatedLegState, committedVisit } = engineEndTurn(currentLegState);
-
-                let newLegState: X01LegState = updatedLegState;
-                if (committedVisit) {
-                    const fixedVisit = { ...committedVisit, legId: currentLegId };
-                    newLegState = {
-                        ...updatedLegState,
-                        visits: [...updatedLegState.visits.slice(0, -1), fixedVisit],
-                    };
-                }
-
-                set({ currentLegState: newLegState });
+            endTurn: expectedLegId => {
+                const result = endX01Turn(get(), expectedLegId, operationMetadata());
+                if (result.state !== get()) set(result.state);
+                return result;
             },
 
+            // Compatibility for callers recovering an old committed checkout.
             finishLegIfNeeded: () => {
-                const { currentLegState, currentMatch, currentLegId, matches } = get();
-                if (!currentLegState || !currentMatch || !currentLegId) return { matchFinished: false };
-                if (!currentLegState.winnerPlayerId) return { matchFinished: false };
-
-                const completedLeg: Leg = {
-                    id: currentLegId,
-                    matchId: currentMatch.id,
-                    sequence: currentMatch.legs.length + 1,
-                    startingPlayerId: currentLegState.playerOrder[0],
-                    winnerPlayerId: currentLegState.winnerPlayerId,
-                    visits: currentLegState.visits,
-                };
-
-                const updatedLegs = [...currentMatch.legs, completedLeg];
-                const legWins: Record<string, number> = {};
-                currentMatch.playerIds.forEach(pid => {
-                    legWins[pid] = 0;
-                });
-                for (const leg of updatedLegs) {
-                    if (leg.winnerPlayerId) legWins[leg.winnerPlayerId] = (legWins[leg.winnerPlayerId] ?? 0) + 1;
-                }
-
-                const updatedMatch: Match = {
-                    ...currentMatch,
-                    status: 'IN_PROGRESS',
-                    abandonedAt: undefined,
-                    legs: updatedLegs,
-                    legWinsByPlayer: legWins,
-                };
-                const otherMatches = matches.filter(m => m.id !== currentMatch.id);
-
-                const bestOf = updatedMatch.bestOfLegs ?? 1;
-                const legsToWin = Math.floor(bestOf / 2) + 1;
-                const matchFinished = updatedMatch.playerIds.some(pid => (legWins[pid] ?? 0) >= legsToWin);
-
-                if (matchFinished) {
-                    const finishedMatch: Match = {
-                        ...updatedMatch,
-                        status: 'COMPLETED',
-                        finishedAt: new Date().toISOString(),
-                        abandonedAt: undefined,
-                    };
-                    set({
-                        matches: [...otherMatches, finishedMatch],
-                        currentMatch: undefined,
-                        currentLegState: undefined,
-                        currentLegId: undefined,
-                        currentLegWins: {},
-                    });
-                    return { matchFinished: true, matchId: finishedMatch.id };
-                }
-
-                const legsPlayed = updatedMatch.legs.length;
-                const baseOrder = updatedMatch.playerIds;
-                const startIndex = legsPlayed % baseOrder.length;
-                const rotatedOrder = [...baseOrder.slice(startIndex), ...baseOrder.slice(0, startIndex)];
-
-                const newLegId = uuid();
-                const newLegState = createInitialLegState(rotatedOrder, updatedMatch.startScore);
-
-                set({
-                    matches: [...otherMatches, updatedMatch],
-                    currentMatch: updatedMatch,
-                    currentLegState: newLegState,
-                    currentLegId: newLegId,
-                    currentLegWins: legWins,
-                });
-
-                return { matchFinished: false, matchId: updatedMatch.id };
+                const result = completeX01LegIfNeeded(get(), operationMetadata());
+                if (result.state !== get()) set(result.state);
+                return { matchFinished: result.matchFinished, matchId: result.matchId };
             },
 
             startAroundTheClock: (playerIds, maxTarget = 20) => {
@@ -595,7 +526,17 @@ export const useGameStore = create<GameState>()(
         {
             name: 'darts-tracker-store-v1',
             version: 4,
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => recoveryStorage),
+            onRehydrateStorage: () => {
+                publishHydrationStatus({ status: 'loading' });
+                return (_state, error) => {
+                    // Zustand catches hydration failures instead of rejecting rehydrate().
+                    // Superseded attempts never reach this callback in 5.0.11.
+                    if (_state === undefined || error !== undefined) {
+                        publishHydrationStatus({ status: 'error', error: error ?? new Error('Game hydration failed') });
+                    }
+                };
+            },
             migrate: (persistedState, version) => {
                 let state = persistedState as Partial<GameState>;
 
@@ -723,3 +664,13 @@ export const useGameStore = create<GameState>()(
         }
     )
 );
+
+// This event runs after hasHydrated becomes true, including automatic startup.
+// recoveryStorage is async, so registration precedes startup completion.
+useGameStore.persist.onFinishHydration(() => publishHydrationStatus({ status: 'ready' }));
+
+/** Coalesce repeated UI retries; loading is published synchronously by rehydrate(). */
+export async function retryGameHydration(): Promise<void> {
+    if (gameHydrationStatus.status !== 'error') return;
+    await useGameStore.persist.rehydrate();
+}

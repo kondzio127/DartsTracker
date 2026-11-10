@@ -26,6 +26,8 @@
     "src/theme/ThemedInput.tsx",
     "src/theme/themeStore.ts",
     "src/application/x01Operations.ts",
-    "src/store/gameStore.ts"
+    "src/store/gameStore.ts",
+    "src/database/**/*.ts",
+    "tests/databaseTypes.ts"
   ]
 }
